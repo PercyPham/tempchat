@@ -1,4 +1,4 @@
-.PHONY: dev dev-be dev-wa dev-up dev-down \
+.PHONY: dev dev-be dev-wa dev-up dev-down dev-gui \
         build build-wa build-be \
         deploy-wa deploy-site \
         test test-be \
@@ -23,6 +23,9 @@ dev-up:       ## Start Redis + RedisInsight via Docker Compose
 
 dev-down:     ## Stop dev infrastructure
 	docker compose -f docker-compose.dev.yml down
+
+dev-gui:      ## Open RedisInsight GUI in the browser
+	open http://localhost:5540
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 
