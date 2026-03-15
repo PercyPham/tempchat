@@ -1,4 +1,4 @@
-# Redis Storage Design — ZeroChat
+# Redis Storage Design — TempChat
 
 ## Key Schema Summary
 
@@ -23,10 +23,10 @@ Room configuration. Existence of this key is the source of truth for whether a r
 | ------------------ | ------------ | ---------------------------------------------------- |
 | `group_name`       | string       | Immutable display name, set at creation              |
 | `access_key`       | string       | Hashed join token                                    |
-| `max_participants` | integer      | Participant cap (increase for boosted rooms)         |
-| `max_events`       | integer      | Event history cap. `50` for free, `200` for boosted  |
+| `max_participants` | integer      | Participant cap. Updated (MAX logic) when a boost is applied. |
+| `max_events`       | integer      | Event history cap. Updated (MAX logic) when a boost is applied. |
 | `created_at`       | integer (ms) | Unix timestamp of room creation                      |
-| `expires_at`       | integer (ms) | Absolute expiry timestamp (extend for boosted rooms) |
+| `expires_at`       | integer (ms) | Absolute expiry timestamp. Extended additively when a boost is applied. |
 
 ---
 
@@ -79,6 +79,15 @@ Append-only event log. Score is the sequence number for strict ordering.
   "type": "joined",          // "joined" | "left"
   "uid": "xyz0987654",
   "ts": 1700001000000
+}
+
+// Boost system event
+{
+  "eid": 44,
+  "type": "boosted",
+  "uid": "xyz0987654",       // userId of the booster, or null if non-member
+  "boostId": "boost_abc123", // ID of the boost option purchased
+  "ts": 1700002000000
 }
 ```
 
@@ -138,13 +147,30 @@ SADD room:{roomId}:keys "room:{roomId}:user:{userId}:meta"
 
 ## TTL Strategy
 
-| Tier    | Room TTL             | Max Events |
-| ------- | -------------------- | ---------- |
-| Free    | 3 hours (10800s)     | 50         |
-| Boosted | 48 hours+ (172800s+) | 200        |
+| Tier  | Room TTL          | Max Participants | Max Events |
+| ----- | ----------------- | ---------------- | ---------- |
+| Free  | 1 hour (3600s)    | 5                | 50         |
+| Plus  | 24 hours (86400s) | 20               | 100        |
+| Pro   | 7 days (604800s)  | 100              | 200        |
+
+> At creation, `max_participants` / `max_events` / `expires_at` reflect the Free tier defaults above. Boost options are served dynamically from the backend and applied additively on top of the current state.
 
 - All keys carry the **room TTL**.
-- To boost a room: update `expires_at`, `max_participants`, and `max_events` in meta, then re-`EXPIRE` all keys.
+
+## Boost Strategy
+
+Boosts are applied atomically via a Lua script, triggered by a payment webhook:
+
+1. Read `expires_at`, `max_participants`, `max_events` from meta
+2. `new_expires_at = current_expires_at + boost.ttl_ms` (additive — not relative to now)
+3. `new_max_participants = MAX(current, boost.maxParticipants)`
+4. `new_max_events = MAX(current, boost.maxEvents)`
+5. `HMSET room:{roomId}:meta` — write all updated fields
+6. Append a `boosted` system event to `room:{roomId}:events` (using `INCR event_seq` for the eid)
+7. `SMEMBERS room:{roomId}:keys` — fetch all room keys
+8. For each key: `PEXPIREAT key new_expires_at`
+
+**Why `PEXPIREAT` over `EXPIRE`**: All keys must share the same absolute deadline. A relative `EXPIRE` inside a loop would skew deadlines by milliseconds.
 
 ---
 
@@ -175,4 +201,4 @@ room:{roomId}:meta  --[expired]--> cleanup worker
 
 - **Redis Cluster**: Use hash tags so all room keys land on the same slot, which is required for multi-key Lua scripts. Rename keys to `{roomId}:room:meta`, `{roomId}:room:users`, etc.
 - **Pub/Sub**: Use `PUBLISH room:{roomId}` for real-time WebSocket fan-out. The sorted set is the persistence layer; pub/sub is the delivery layer.
-- **Memory estimate (free room)**: ~5 users × ~50 events × ~512 bytes/event ≈ ~125 KB per active room.
+- **Memory estimate (free room)**: ~5 users × ~50 events × ~512 bytes/event ≈ ~125 KB per active room. Pro rooms: ~100 users × ~200 events × ~512 bytes/event ≈ ~10 MB worst case.
