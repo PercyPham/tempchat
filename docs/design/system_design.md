@@ -100,9 +100,9 @@ See [redis_design.md](redis_design.md) for the full key schema.
 
 | **Feature**         | **Free**             | **Plus Boost**       | **Pro Boost**        |
 | ------------------- | -------------------- | -------------------- | -------------------- |
-| **Participant Cap** | 5 **Total** Users    | 20 **Total** Users   | 100 **Total** Users  |
+| **Participant Cap** | 5 **Total** Users    | 10 **Total** Users   | 50 **Total** Users   |
 | **Room Lifetime**   | 1 Hour               | 24 Hours             | 7 Days               |
-| **Message Buffer**  | 50 Events            | 100 Events           | 200 Events           |
+| **Message Buffer**  | 50 Events            | 100 Events           | 100 Events           |
 | **Binary Sharing**  | P2P Only             | P2P Only             | P2P Only             |
 | **Room Name**       | Static (at creation) | Static (at creation) | Static (at creation) |
 | **Pricing**         | $0                   | One-time Fee / Room  | One-time Fee / Room  |

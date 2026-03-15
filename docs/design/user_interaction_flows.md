@@ -71,7 +71,7 @@ This document defines the user journey and interface requirements for TempChat, 
    - **Visuals**: Displays a micro-countdown (e.g., `1h 45m`) and a **Lightning Bolt** icon.
    - **Color States**: Healthy (Navy), Warning (Amber), Urgent (Pulsing Red).
    - **Interaction**: Tapping the pill expands it to show boost purchase options (fetched from `GET /v1/boost-options`), each displayed as a **Boost Option Card**. Both options are always shown — stacking is always useful for extending expiry even if the participant cap is already high.
-   - **Post-boost**: On `room:boosted` WebSocket event, the pill animates briefly, the timer updates to the new `expiresAt`, and a system message appears in the chat feed (e.g., "Alice boosted this room (+7 days, up to 100 participants)." or "Someone outside boosted this room (+24 hours, up to 20 participants).").
+   - **Post-boost**: On `room:boosted` WebSocket event, the pill animates briefly, the timer updates to the new `expiresAt`, and a system message appears in the chat feed (e.g., "Alice boosted this room (+7 days, up to 100 participants)." or "Someone outside boosted this room (+24 hours, up to 10 participants).").
 
 4. **Message Feed**: Compact bubbles with "Self" vs "Others" distinction. Tapping a bubble reveals the server timestamp.
 5. **Input Area**: Sticky at the bottom with an auto-expanding text area.

@@ -97,7 +97,7 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
       "id": "boost_abc123",
       "name": "Plus Boost",
       "ttlMs": 86400000,
-      "maxParticipants": 20,
+      "maxParticipants": 10,
       "maxEvents": 100,
       "price": "$2.99"
     },
@@ -105,8 +105,8 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
       "id": "boost_def456",
       "name": "Pro Boost",
       "ttlMs": 604800000,
-      "maxParticipants": 100,
-      "maxEvents": 200,
+      "maxParticipants": 50,
+      "maxEvents": 100,
       "price": "$9.99"
     }
   ]
@@ -123,7 +123,7 @@ Non-members boosting from the "Room Full" screen authenticate with `uid: null` (
 - **Endpoint:** `GET /v1/rooms/:roomId/events?afterEid=142`
 - **Header:** Requires `X-TempChat-Auth`.
 - **Params:** - `afterEid` (Optional): Integer. Returns events with `eid > afterEid`.
-- **Note on Buffer Miss:** Since the event log is capped (50 free / 100 plus / 200 pro), requested eids older than the current buffer will not be returned. The client should gracefully handle gaps if the earliest returned `eid` is still greater than the expected `afterEid`.
+- **Note on Buffer Miss:** Since the event log is capped (50 free / 100 plus / 100 pro), requested eids older than the current buffer will not be returned. The client should gracefully handle gaps if the earliest returned `eid` is still greater than the expected `afterEid`.
 - **Response:**
   ```
   [
@@ -142,12 +142,12 @@ Non-members boosting from the "Room Full" screen authenticate with `uid: null` (
 
 ### **3.2 Server -> Client**
 
-| **Event**         | **Payload**                                                                                                                                                       | **Description**                                                                                                                                 |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `message:receive` | `{ "eid": 145, "uid": "...", "msg": "...", "ts": ts }`                                                                                                            | Standard chat message.                                                                                                                          |
-| `user:joined`     | `{ "eid": 146, "type": "joined", "uid": "...", "ts": ts }`                                                                                                        | User join system event.                                                                                                                         |
-| `user:left`       | `{ "eid": 147, "type": "left", "uid": "...", "ts": ts }`                                                                                                          | User leave system event.                                                                                                                        |
-| `room:boosted`    | `{ "eid": 148, "type": "boosted", "uid": "..." \| null, "boostId": "boost_abc123", "expiresAt": 1715529200, "maxParticipants": 100, "maxEvents": 200, "ts": ts }` | Broadcast when a paid boost is confirmed. `uid` is null if the booster was a non-member. Clients update their local room state and status pill. |
+| **Event**         | **Payload**                                                                                                                                                      | **Description**                                                                                                                                 |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `message:receive` | `{ "eid": 145, "uid": "...", "msg": "...", "ts": ts }`                                                                                                           | Standard chat message.                                                                                                                          |
+| `user:joined`     | `{ "eid": 146, "type": "joined", "uid": "...", "ts": ts }`                                                                                                       | User join system event.                                                                                                                         |
+| `user:left`       | `{ "eid": 147, "type": "left", "uid": "...", "ts": ts }`                                                                                                         | User leave system event.                                                                                                                        |
+| `room:boosted`    | `{ "eid": 148, "type": "boosted", "uid": "..." \| null, "boostId": "boost_abc123", "expiresAt": 1715529200, "maxParticipants": 50, "maxEvents": 100, "ts": ts }` | Broadcast when a paid boost is confirmed. `uid` is null if the booster was a non-member. Clients update their local room state and status pill. |
 
 ## **4. Storage Schemas (Redis)**
 

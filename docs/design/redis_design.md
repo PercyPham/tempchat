@@ -19,13 +19,13 @@
 
 Room configuration. Existence of this key is the source of truth for whether a room is alive.
 
-| Field              | Type         | Description                                          |
-| ------------------ | ------------ | ---------------------------------------------------- |
-| `room_name`        | string       | Immutable display name, set at creation              |
-| `access_key`       | string       | Hashed join token                                    |
-| `max_participants` | integer      | Participant cap. Updated (MAX logic) when a boost is applied. |
-| `max_events`       | integer      | Event cap. Updated (MAX logic) when a boost is applied. |
-| `created_at`       | integer (ms) | Unix timestamp of room creation                      |
+| Field              | Type         | Description                                                             |
+| ------------------ | ------------ | ----------------------------------------------------------------------- |
+| `room_name`        | string       | Immutable display name, set at creation                                 |
+| `access_key`       | string       | Hashed join token                                                       |
+| `max_participants` | integer      | Participant cap. Updated (MAX logic) when a boost is applied.           |
+| `max_events`       | integer      | Event cap. Updated (MAX logic) when a boost is applied.                 |
+| `created_at`       | integer (ms) | Unix timestamp of room creation                                         |
 | `expires_at`       | integer (ms) | Absolute expiry timestamp. Extended additively when a boost is applied. |
 
 ---
@@ -47,12 +47,12 @@ Tracks **all users who ever joined**, including those who have left. Never remov
 
 Ephemeral user identity, scoped to the room. `userId` is only unique within a room.
 
-| Field          | Type         | Description                                                      |
-| -------------- | ------------ | ---------------------------------------------------------------- |
-| `display_name` | string       | Chosen nickname                                                  |
-| `joined_at`    | integer (ms) | Join timestamp                                                   |
+| Field          | Type         | Description                                                          |
+| -------------- | ------------ | -------------------------------------------------------------------- |
+| `display_name` | string       | Chosen nickname                                                      |
+| `joined_at`    | integer (ms) | Join timestamp                                                       |
 | `join_eid`     | integer      | Value of `event_seq` at join time. Lower bound for event range query |
-| `left_at`      | integer (ms) | Leave timestamp. Absent if user is still in room                 |
+| `left_at`      | integer (ms) | Leave timestamp. Absent if user is still in room                     |
 
 ---
 
@@ -147,11 +147,11 @@ SADD room:{roomId}:keys "room:{roomId}:user:{userId}:meta"
 
 ## TTL Strategy
 
-| Tier  | Room TTL          | Max Participants | Max Events |
-| ----- | ----------------- | ---------------- | ---------- |
-| Free  | 1 hour (3600s)    | 5                | 50         |
-| Plus  | 24 hours (86400s) | 20               | 100        |
-| Pro   | 7 days (604800s)  | 100              | 200        |
+| Tier | Room TTL          | Max Participants | Max Events |
+| ---- | ----------------- | ---------------- | ---------- |
+| Free | 1 hour (3600s)    | 5                | 50         |
+| Plus | 24 hours (86400s) | 10               | 100        |
+| Pro  | 7 days (604800s)  | 50               | 100        |
 
 > At creation, `max_participants` / `max_events` / `expires_at` reflect the Free tier defaults above. Boost options are served dynamically from the backend and applied additively on top of the current state.
 

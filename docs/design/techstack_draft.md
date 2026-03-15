@@ -12,7 +12,8 @@
 8. [Nginx configuration](#8-nginx-configuration)
 9. [TLS with Let's Encrypt](#9-tls-with-lets-encrypt)
 10. [Cost summary](#10-cost-summary)
-11. [Hardening checklist](#11-hardening-checklist)
+11. [Capacity reference](#11-capacity-reference)
+12. [Hardening checklist](#12-hardening-checklist)
 
 ---
 
@@ -30,6 +31,8 @@
 | Production server    | DigitalOcean Droplet — Singapore ($6/mo) |
 | Reverse proxy        | Nginx                                    |
 | TLS certificate      | Let's Encrypt + certbot                  |
+
+> **Why not Docker Compose in production?** On a 1 GB droplet, the Docker daemon + containerd adds ~50–100 MB of overhead — memory taken directly from Go's goroutine heap. With systemd + system Redis, that memory stays available for WebSocket connections. Docker Compose remains the right choice for local development only.
 
 ---
 
@@ -146,6 +149,9 @@ func main() {
 | `REDIS_ADDR`      | `127.0.0.1:6379`             |
 | `ALLOWED_ORIGINS` | `https://app.yourdomain.com` |
 | `GIN_MODE`        | `release`                    |
+| `GOMAXPROCS`      | `1`                          |
+
+> **`GOMAXPROCS=1`**: The droplet has a single vCPU. Setting this prevents the Go runtime from spinning additional OS threads, reducing scheduler overhead with no throughput cost.
 
 ---
 
@@ -225,6 +231,16 @@ In RedisInsight, connect to host `localhost`, port `6379`.
 | OS       | Ubuntu 24.04 LTS                    |
 | Services | Nginx, Go binary (systemd), Redis   |
 
+### Memory layout
+
+| Component        | Budget       | Notes                                         |
+| ---------------- | ------------ | --------------------------------------------- |
+| OS + Nginx       | ~150 MB      | Stable baseline                               |
+| Go binary (idle) | ~30 MB       | Grows ~8 KB per active WebSocket goroutine    |
+| Redis            | 200 MB       | Hard cap via `maxmemory`                      |
+| Go heap buffer   | ~644 MB      | Available for goroutine stacks and runtime GC |
+| **Total**        | **~1024 MB** |                                               |
+
 ### Traffic flow
 
 ```
@@ -291,20 +307,73 @@ ufw enable
 ufw status
 ```
 
-### Step 4 — Redis
+### Step 4 — Swap
+
+A 512 MB swap file acts as a safety net against OOM kills during traffic spikes. It does not increase throughput — it buys time to notice a memory leak before the process crashes.
+
+```bash
+fallocate -l 512M /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+# Use swap only as a last resort, not for routine paging.
+echo 'vm.swappiness=10' >> /etc/sysctl.conf
+sysctl -p
+```
+
+### Step 5 — Redis
 
 Redis must only bind to localhost — never expose it publicly:
 
 ```bash
 # /etc/redis/redis.conf
+
 bind 127.0.0.1
 
-# Cap memory so Redis cannot starve the Go process on a 1 GB droplet.
-maxmemory 128mb
+# Increased from 128mb — safe given the memory layout above.
+# Leaves ~644 MB for the Go process.
+maxmemory 200mb
 maxmemory-policy allkeys-lru
 
 # Required for room expiry cleanup (keyspace notifications).
 notify-keyspace-events Ex
+
+# --- Persistence ---
+
+# RDB snapshots — point-in-time backup to disk.
+# Snapshot if at least N keys changed within the given interval.
+# These three rules cover idle servers, moderate traffic, and bursts.
+dir /var/lib/redis
+save 900 1
+save 300 10
+save 60 10000
+rdbcompression yes
+rdbfilename dump.rdb
+
+# AOF — append-only log for crash recovery between snapshots.
+# everysec flushes to disk once per second — at most 1 second of data
+# lost on a hard crash. "always" is too expensive on 1 vCPU.
+appendonly yes
+appendfilename "appendonly.aof"
+appendfsync everysec
+
+# Rewrite the AOF file when it doubles in size, but only if it has grown
+# past 64 MB. This keeps the file from ballooning over time.
+auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 64mb
+```
+
+> **Disk impact**: the RDB snapshot for 200 MB of Redis data compresses to roughly 40–80 MB. The AOF file stays under ~200 MB between rewrites. Total persistence overhead is well under 500 MB on the 25 GB SSD.
+
+> **Startup behaviour**: on restart Redis loads the AOF first (more complete) and falls back to the RDB if the AOF is absent or corrupt. Active rooms whose TTLs haven't expired will survive a reboot or crash automatically.
+
+Ensure the data directory exists and is owned by the Redis user:
+
+```bash
+mkdir -p /var/lib/redis
+chown redis:redis /var/lib/redis
 ```
 
 Restart Redis after editing:
@@ -313,7 +382,15 @@ Restart Redis after editing:
 systemctl restart redis
 ```
 
-### Step 5 — systemd service
+Verify persistence is active:
+
+```bash
+redis-cli CONFIG GET save
+redis-cli CONFIG GET appendonly
+redis-cli INFO persistence   # check aof_enabled:1, rdb_last_bgsave_status:ok
+```
+
+### Step 6 — systemd service
 
 Create a dedicated system user and place the compiled binary:
 
@@ -342,6 +419,7 @@ Environment=GIN_MODE=release
 Environment=REDIS_ADDR=127.0.0.1:6379
 Environment=PORT=8080
 Environment=ALLOWED_ORIGINS=https://app.yourdomain.com
+Environment=GOMAXPROCS=1
 
 [Install]
 WantedBy=multi-user.target
@@ -371,16 +449,26 @@ Install Nginx:
 apt update && apt install nginx -y
 ```
 
-### Rate-limiting zones (nginx.conf)
+### Worker tuning (nginx.conf)
 
-Add the following inside the existing `http { }` block in `/etc/nginx/nginx.conf`:
+Set `worker_processes` to match the vCPU count, then add rate-limiting zones inside the existing `http { }` block in `/etc/nginx/nginx.conf`:
 
 ```nginx
-# Rate limiting: max 20 REST requests/second per IP, burst of 40.
-limit_req_zone  $binary_remote_addr  zone=api:10m  rate=20r/s;
+worker_processes 1;        # 1 vCPU — no benefit from more workers
 
-# Connection limiting: max 10 simultaneous WebSocket connections per IP.
-limit_conn_zone $binary_remote_addr  zone=ws:10m;
+events {
+    worker_connections 1024;
+}
+
+http {
+    # Rate limiting: max 20 REST requests/second per IP, burst of 40.
+    limit_req_zone  $binary_remote_addr  zone=api:10m  rate=20r/s;
+
+    # Connection limiting: max 10 simultaneous WebSocket connections per IP.
+    limit_conn_zone $binary_remote_addr  zone=ws:10m;
+
+    # ... rest of existing http block
+}
 ```
 
 ### Site config
@@ -401,14 +489,16 @@ server {
     add_header X-Frame-Options           "DENY"                                always;
     add_header Referrer-Policy           "no-referrer"                         always;
 
-    # WebSocket endpoint
-    location /ws {
+    # All /v1/ traffic — REST and WebSocket — proxied to Go.
+    # Gin handles routing internally. Upgrade headers are safe to pass
+    # for all requests; REST endpoints ignore them.
+    location /v1/ {
         proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
 
-        # Required to pass the WebSocket upgrade handshake through Nginx.
+        # Required for WebSocket upgrade handshake.
         proxy_set_header Upgrade    $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection $http_connection;
 
         proxy_set_header Host       $host;
         proxy_set_header X-Real-IP  $remote_addr;
@@ -418,25 +508,18 @@ server {
         proxy_read_timeout 604800s;
         proxy_send_timeout 604800s;
 
-        # Limit concurrent WebSocket connections per IP.
-        limit_conn ws 10;
-    }
-
-    # REST API
-    location /api/ {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host      $host;
-        proxy_set_header X-Real-IP $remote_addr;
-
-        # Reject bodies larger than 4 KB.
+        # Reject bodies larger than 4 KB (REST endpoints).
         client_max_body_size 4k;
 
         # Rate limiting — allow short bursts, queue excess, reject beyond that.
-        limit_req zone=api burst=40 nodelay;
+        limit_req  zone=api burst=40 nodelay;
+
+        # Limit concurrent connections per IP (covers WebSocket).
+        limit_conn ws 10;
     }
 
-    # Health check (no rate limiting, no auth)
-    location /health {
+    # Health check — no rate limiting, no auth
+    location /v1/health {
         proxy_pass http://127.0.0.1:8080;
     }
 }
@@ -485,7 +568,24 @@ certbot renew --dry-run
 
 ---
 
-## 11. Hardening checklist
+## 11. Capacity reference
+
+Estimates based on the memory layout above (200 MB Redis, ~644 MB Go heap).
+Per-room Redis cost assumes 512-byte encrypted message payloads.
+
+| Tier                        | Redis cost / room | Redis limit (200 MB) | Go goroutine limit (~644 MB) | **Practical ceiling** |
+| --------------------------- | ----------------- | -------------------- | ---------------------------- | --------------------- |
+| Free (5 users, 50 events)   | ~37 KB            | ~5,400 rooms         | ~1,600 rooms                 | **~1,600 rooms**      |
+| Plus (10 users, 100 events) | ~83 KB            | ~2,500 rooms         | ~800 rooms                   | **~800 rooms**        |
+| Pro (50 users, 100 events)  | ~370 KB           | ~540 rooms           | ~160 rooms                   | **~160 rooms**        |
+
+The practical ceiling is always the Go goroutine heap, not Redis — each active WebSocket connection costs a minimum of 8 KB of goroutine stack. Redis fills up first only for Pro-tier rooms.
+
+The biggest single lever for increasing free-tier capacity is reducing encrypted message payload size. Halving the payload from 512 B to 256 B cuts per-room Redis cost by ~40% and meaningfully increases the Redis-side limit, though the goroutine ceiling remains the binding constraint.
+
+---
+
+## 12. Hardening checklist
 
 Run through this after every fresh deployment:
 
@@ -493,11 +593,18 @@ Run through this after every fresh deployment:
 - [ ] SSH password auth disabled (`grep PasswordAuthentication /etc/ssh/sshd_config`)
 - [ ] fail2ban active for SSH (`fail2ban-client status sshd`)
 - [ ] unattended-upgrades enabled (`systemctl status unattended-upgrades`)
+- [ ] Swap file active (`swapon --show`)
+- [ ] `vm.swappiness=10` set (`cat /proc/sys/vm/swappiness`)
 - [ ] Redis bound to localhost only (`redis-cli CONFIG GET bind`)
-- [ ] Redis `maxmemory` set (`redis-cli CONFIG GET maxmemory`)
+- [ ] Redis `maxmemory` set to 200mb (`redis-cli CONFIG GET maxmemory`)
 - [ ] Redis keyspace notifications on (`redis-cli CONFIG GET notify-keyspace-events`)
+- [ ] Redis RDB snapshots enabled (`redis-cli CONFIG GET save`)
+- [ ] Redis AOF enabled (`redis-cli CONFIG GET appendonly`)
+- [ ] Redis persistence healthy (`redis-cli INFO persistence | grep -E 'aof_enabled|rdb_last_bgsave_status'`)
 - [ ] `ALLOWED_ORIGINS` set correctly in systemd service
 - [ ] `GIN_MODE=release` set in systemd service
+- [ ] `GOMAXPROCS=1` set in systemd service
+- [ ] Nginx `worker_processes 1` set (`nginx -T | grep worker_processes`)
 - [ ] Nginx config valid (`nginx -t`)
 - [ ] TLS certificate issued and auto-renewal configured (`certbot renew --dry-run`)
-- [ ] Health check reachable (`curl https://api.yourdomain.com/health`)
+- [ ] Health check reachable (`curl https://api.yourdomain.com/v1/health`)
