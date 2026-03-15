@@ -1,0 +1,13 @@
+{
+  "projects": {
+    "default": "temp-chat-prod"
+  },
+  "targets": {
+    "temp-chat-prod": {
+      "hosting": {
+        "webapp": ["app-temp-chat-prod"],
+        "site": ["temp-chat-prod"]
+      }
+    }
+  }
+}
