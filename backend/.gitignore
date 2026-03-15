@@ -5,6 +5,8 @@ server
 
 # Environment
 .env
+.env.staging
+.env.production
 
 # Go test cache
 *.test

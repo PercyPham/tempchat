@@ -6,24 +6,26 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"github.com/percypham/tempchat/internal/config"
 )
 
 func main() {
-	cfg := config.Load()
+	godotenv.Load() // load .env if present
+	config.Load()
 
-	gin.SetMode(cfg.GinMode)
+	gin.SetMode(config.App().GinMode)
 
 	r := gin.Default()
 
-	r.Use(corsMiddleware(cfg.AllowedOrigins))
+	r.Use(corsMiddleware(config.App().AllowedOrigins))
 
 	v1 := r.Group("/v1")
 	v1.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "mode": config.App().Mode})
 	})
 
-	addr := ":" + cfg.Port
+	addr := ":" + config.App().Port
 	log.Printf("Server starting on %s", addr)
 	if err := r.Run(addr); err != nil {
 		log.Fatalf("Server failed: %v", err)
