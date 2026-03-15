@@ -126,25 +126,26 @@ func main() {
     // Reject bodies larger than 4 KB for REST endpoints.
     r.MaxMultipartMemory = 4 << 10
 
-    r.POST("/api/rooms", createRoom)
-    r.POST("/api/rooms/:roomId/join", joinRoom)
-    r.GET("/api/rooms/:roomId", getRoom)
-    r.GET("/api/rooms/:roomId/events", getEvents)
-    r.GET("/api/boost-options", getBoostOptions)
-    r.GET("/health", func(c *gin.Context) { c.Status(http.StatusOK) })
-    r.GET("/ws", wsHandler)
+    v1 := r.Group("/v1")
+    v1.POST("/rooms", createRoom)
+    v1.POST("/rooms/:roomId/join", joinRoom)
+    v1.GET("/rooms/:roomId", getRoom)
+    v1.GET("/rooms/:roomId/events", getEvents)
+    v1.GET("/boost-options", getBoostOptions)
+    v1.GET("/health", func(c *gin.Context) { c.Status(http.StatusOK) })
+    v1.GET("/rooms/:roomId/ws", wsHandler)
     r.Run("127.0.0.1:" + os.Getenv("PORT"))
 }
 ```
 
 **Environment variables (set in systemd service):**
 
-| Variable          | Example value                         |
-| ----------------- | ------------------------------------- |
-| `PORT`            | `8080`                                |
-| `REDIS_ADDR`      | `127.0.0.1:6379`                      |
-| `ALLOWED_ORIGINS` | `https://app.yourdomain.com`          |
-| `GIN_MODE`        | `release`                             |
+| Variable          | Example value                |
+| ----------------- | ---------------------------- |
+| `PORT`            | `8080`                       |
+| `REDIS_ADDR`      | `127.0.0.1:6379`             |
+| `ALLOWED_ORIGINS` | `https://app.yourdomain.com` |
+| `GIN_MODE`        | `release`                    |
 
 ---
 
@@ -173,12 +174,12 @@ services:
   redis:
     image: redis:8-alpine
     ports:
-      - '6379:6379'
+      - "6379:6379"
 
   redisinsight:
     image: redis/redisinsight:latest
     ports:
-      - '5540:5540'
+      - "5540:5540"
     depends_on:
       - redis
 ```
@@ -228,12 +229,12 @@ In RedisInsight, connect to host `localhost`, port `6379`.
 
 ```
 Browser
-  │  wss://api.yourdomain.com/ws      (port 443, TLS)
-  │  https://api.yourdomain.com/api/  (port 443, TLS)
+  │  wss://api.yourdomain.com/v1/rooms/:roomId/ws  (port 443, TLS)
+  │  https://api.yourdomain.com/v1/                (port 443, TLS)
   ▼
 Nginx  ←  TLS termination
-  │  ws://127.0.0.1:8080/ws           (internal only)
-  │  http://127.0.0.1:8080/api/       (internal only)
+  │  ws://127.0.0.1:8080/v1/rooms/:roomId/ws       (internal only)
+  │  http://127.0.0.1:8080/v1/                     (internal only)
   ▼
 Go (Gin)  ←  127.0.0.1:8080
   │

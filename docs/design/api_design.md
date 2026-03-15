@@ -16,16 +16,16 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
 }
 ```
 
-## **2. REST Endpoints (Express.js)**
+## **2. REST Endpoints (Go Gin)**
 
 ### **2.1 Create Room**
 
-- **Endpoint:** `POST /api/rooms`
+- **Endpoint:** `POST /v1/rooms`
 - **Payload:**
   ```
   {
-    "groupName": "Project X Sync",
-    "roomAccessKey": "pbkdf2_derived_rak_string"
+    "name": "Project X Sync",
+    "accessKey": "pbkdf2_derived_rak_string"
   }
   ```
 - **Response:** `201 Created`
@@ -39,7 +39,7 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
 
 ### **2.2 Validate & Join Room**
 
-- **Endpoint:** `POST /api/rooms/:roomId/join`
+- **Endpoint:** `POST /v1/rooms/:roomId/join`
 - **Header:** Requires `X-TempChat-Auth` signed with `roomAccessKey`.
 - **Payload:** `{ "displayName": "Alice" }`
 - **Response:** `200 OK`
@@ -47,7 +47,7 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
   {
     "userId": "user-uuid-xyz",
     "joinEid": 142,
-    "group": {
+    "room": {
       "name": "Project X Sync",
       "expiresAt": 1715442800,
       "memberCount": 2,
@@ -63,11 +63,11 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
   ```
   { "error": "room_full" }
   ```
-  The client then calls `GET /api/rooms/:roomId` and `GET /api/boost-options` to determine whether boost purchase options should be shown.
+  The client then calls `GET /v1/rooms/:roomId` and `GET /v1/boost-options` to determine whether boost purchase options should be shown.
 
-### **2.3 Fetch Group Info (Sync API)**
+### **2.3 Fetch Room Info (Sync API)**
 
-- **Endpoint:** `GET /api/rooms/:roomId`
+- **Endpoint:** `GET /v1/rooms/:roomId`
 - **Header:** Requires `X-TempChat-Auth`.
 - **Description:** Used to refresh the full state of the room (e.g., after detecting a message gap). Also used by non-members after a `room_full` rejection to check current capacity before deciding whether to boost.
 - **Response:** `200 OK`
@@ -87,7 +87,7 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
 
 ### **2.4 Fetch Boost Options**
 
-- **Endpoint:** `GET /api/boost-options`
+- **Endpoint:** `GET /v1/boost-options`
 - **Auth:** None required (public endpoint).
 - **Description:** Returns the current list of available boost options. Options are configured server-side and can change without a client update. The client uses this to render boost purchase cards and to determine (for non-members) whether any boost would raise the room's participant cap enough to allow entry.
 - **Response:** `200 OK`
@@ -120,7 +120,7 @@ Non-members boosting from the "Room Full" screen authenticate with `uid: null` (
 
 ### **2.6 Fetch Events**
 
-- **Endpoint:** `GET /api/rooms/:roomId/events?afterEid=142`
+- **Endpoint:** `GET /v1/rooms/:roomId/events?afterEid=142`
 - **Header:** Requires `X-TempChat-Auth`.
 - **Params:** - `afterEid` (Optional): Integer. Returns events with `eid > afterEid`.
 - **Note on Buffer Miss:** Since the event log is capped (50 free / 100 plus / 200 pro), requested eids older than the current buffer will not be returned. The client should gracefully handle gaps if the earliest returned `eid` is still greater than the expected `afterEid`.
@@ -142,11 +142,11 @@ Non-members boosting from the "Room Full" screen authenticate with `uid: null` (
 
 ### **3.2 Server -> Client**
 
-| **Event**         | **Payload**                                          | **Description**        |
-| ----------------- | ---------------------------------------------------- | ---------------------- |
-| `message:receive` | `{ "eid": 145, "uid": "...", "msg": "...", "ts": ts }` | Standard chat message. |
-| `user:joined`     | `{ "eid": 146, "type": "joined", "uid": "...", "ts": ts }` | User join system event. |
-| `user:left`       | `{ "eid": 147, "type": "left", "uid": "...", "ts": ts }` | User leave system event. |
+| **Event**         | **Payload**                                                                                                                                                       | **Description**                                                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `message:receive` | `{ "eid": 145, "uid": "...", "msg": "...", "ts": ts }`                                                                                                            | Standard chat message.                                                                                                                          |
+| `user:joined`     | `{ "eid": 146, "type": "joined", "uid": "...", "ts": ts }`                                                                                                        | User join system event.                                                                                                                         |
+| `user:left`       | `{ "eid": 147, "type": "left", "uid": "...", "ts": ts }`                                                                                                          | User leave system event.                                                                                                                        |
 | `room:boosted`    | `{ "eid": 148, "type": "boosted", "uid": "..." \| null, "boostId": "boost_abc123", "expiresAt": 1715529200, "maxParticipants": 100, "maxEvents": 200, "ts": ts }` | Broadcast when a paid boost is confirmed. `uid` is null if the booster was a non-member. Clients update their local room state and status pill. |
 
 ## **4. Storage Schemas (Redis)**

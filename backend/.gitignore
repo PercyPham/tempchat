@@ -1,6 +1,7 @@
 # Binaries
 bin/
 tmp/
+server
 
 # Environment
 .env

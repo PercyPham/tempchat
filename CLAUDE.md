@@ -38,22 +38,28 @@ make deploy-site  # Deploy marketing site to Firebase Hosting
 ## Architecture
 
 ### Frontend (webapp)
+
 React + Vite + TypeScript PWA. All crypto runs client-side:
+
 - Room access key derived via **PBKDF2-HMAC-SHA-512** (roomId + passphrase → roomAccessKey)
 - Messages encrypted with **AES-GCM** using the roomAccessKey
 - Request signing uses **HMAC-SHA-256**: `X-TempChat-Auth: Base64(claims).HMAC-SHA-256(claims, roomAccessKey)`
 
 ### Backend (backend)
+
 Go + Gin HTTP server with `coder/websocket` for real-time events. The backend is **zero-knowledge** — it never sees plaintext messages or the roomAccessKey.
 
 Key REST endpoints:
-- `POST /api/rooms` — create room
-- `POST /api/rooms/:roomId/join` — join (returns 403 `room_full` if at capacity)
-- `GET /api/rooms/:roomId/events` — fetch encrypted events
-- WebSocket at `/api/rooms/:roomId/ws` — real-time events
+
+- `POST /v1/rooms` — create room
+- `POST /v1/rooms/:roomId/join` — join (returns 403 `room_full` if at capacity)
+- `GET /v1/rooms/:roomId/events` — fetch encrypted events
+- WebSocket at `/v1/rooms/:roomId/ws` — real-time events
 
 ### Storage (Redis)
+
 All room state lives in Redis with TTL-based expiry. Key schema per room:
+
 - `room:{roomId}:meta` — hash of room config
 - `room:{roomId}:users` — hash of member registry
 - `room:{roomId}:events` — sorted set of encrypted messages (by seq)
@@ -63,13 +69,16 @@ All room state lives in Redis with TTL-based expiry. Key schema per room:
 Boost logic (additive expiry, MAX-based cap updates) is implemented as an atomic Lua script. Keyspace notifications trigger cleanup of all room keys on expiry.
 
 ### Boost/Monetization
+
 Three tiers stack additively on expiry (not from now): Free → Plus Boost (+24h, 20 users) → Pro Boost (+7d, 100 users). User/event caps use MAX logic.
 
 ## Design Docs
 
 Authoritative references in `docs/design/`:
+
 - `system_design.md` — security model, tier logic, roadmap
 - `api_design.md` — full REST + WebSocket spec with schemas
 - `redis_design.md` — key schema, TTL strategy, Lua boost script
 - `techstack_draft.md` — infra, deployment (DigitalOcean + Nginx + systemd)
 - `user_interaction_flows.md` — mobile UX flows
+- `test_design.md` — test design

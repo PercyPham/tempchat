@@ -21,7 +21,7 @@ Room configuration. Existence of this key is the source of truth for whether a r
 
 | Field              | Type         | Description                                          |
 | ------------------ | ------------ | ---------------------------------------------------- |
-| `group_name`       | string       | Immutable display name, set at creation              |
+| `room_name`        | string       | Immutable display name, set at creation              |
 | `access_key`       | string       | Hashed join token                                    |
 | `max_participants` | integer      | Participant cap. Updated (MAX logic) when a boost is applied. |
 | `max_events`       | integer      | Event cap. Updated (MAX logic) when a boost is applied. |
