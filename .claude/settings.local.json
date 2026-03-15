@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(go get:*)",
+      "Bash(go mod:*)",
+      "Bash(make:*)",
+      "Bash(pnpm add:*)"
+    ]
+  }
+}

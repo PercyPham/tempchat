@@ -1,0 +1,13 @@
+# Binaries
+bin/
+tmp/
+
+# Environment
+.env
+
+# Go test cache
+*.test
+
+# Go workspace
+go.work
+go.work.sum
