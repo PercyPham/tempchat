@@ -24,7 +24,7 @@ Room configuration. Existence of this key is the source of truth for whether a r
 | `group_name`       | string       | Immutable display name, set at creation              |
 | `access_key`       | string       | Hashed join token                                    |
 | `max_participants` | integer      | Participant cap. Updated (MAX logic) when a boost is applied. |
-| `max_events`       | integer      | Event history cap. Updated (MAX logic) when a boost is applied. |
+| `max_events`       | integer      | Event cap. Updated (MAX logic) when a boost is applied. |
 | `created_at`       | integer (ms) | Unix timestamp of room creation                      |
 | `expires_at`       | integer (ms) | Absolute expiry timestamp. Extended additively when a boost is applied. |
 
@@ -51,7 +51,7 @@ Ephemeral user identity, scoped to the room. `userId` is only unique within a ro
 | -------------- | ------------ | ---------------------------------------------------------------- |
 | `display_name` | string       | Chosen nickname                                                  |
 | `joined_at`    | integer (ms) | Join timestamp                                                   |
-| `join_eid`     | integer      | Value of `event_seq` at join time. Lower bound for history fetch |
+| `join_eid`     | integer      | Value of `event_seq` at join time. Lower bound for event range query |
 | `left_at`      | integer (ms) | Leave timestamp. Absent if user is still in room                 |
 
 ---
@@ -102,7 +102,7 @@ ZREMRANGEBYRANK room:{roomId}:events 0 -(max_events + 1)
 
 This retains only the most recent N events and drops the oldest automatically when the cap is exceeded.
 
-**Late-join history query** — fetch all events after a user's join sequence:
+**Late-join event query** — fetch all events after a user's join sequence:
 
 ```redis
 ZRANGEBYSCORE room:{roomId}:events {join_eid} +inf

@@ -129,7 +129,7 @@ func main() {
     r.POST("/api/rooms", createRoom)
     r.POST("/api/rooms/:roomId/join", joinRoom)
     r.GET("/api/rooms/:roomId", getRoom)
-    r.GET("/api/rooms/:roomId/history", getHistory)
+    r.GET("/api/rooms/:roomId/events", getEvents)
     r.GET("/api/boost-options", getBoostOptions)
     r.GET("/health", func(c *gin.Context) { c.Status(http.StatusOK) })
     r.GET("/ws", wsHandler)

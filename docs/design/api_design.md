@@ -118,9 +118,9 @@ Room boosts are applied via payment webhook callbacks (SePay / Paddle). The paym
 
 Non-members boosting from the "Room Full" screen authenticate with `uid: null` (same pattern as the initial join request), using the `roomAccessKey` from the URL hash.
 
-### **2.6 Fetch Message History**
+### **2.6 Fetch Events**
 
-- **Endpoint:** `GET /api/rooms/:roomId/history?afterEid=142`
+- **Endpoint:** `GET /api/rooms/:roomId/events?afterEid=142`
 - **Header:** Requires `X-TempChat-Auth`.
 - **Params:** - `afterEid` (Optional): Integer. Returns events with `eid > afterEid`.
 - **Note on Buffer Miss:** Since the event log is capped (50 free / 100 plus / 200 pro), requested eids older than the current buffer will not be returned. The client should gracefully handle gaps if the earliest returned `eid` is still greater than the expected `afterEid`.

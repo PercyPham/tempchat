@@ -1,6 +1,6 @@
 services:
   redis:
-    image: redis:9-alpine
+    image: redis:8-alpine
     ports:
       - "6379:6379"
     command: redis-server --notify-keyspace-events Ex
