@@ -18,7 +18,8 @@ func main() {
 
 	r.Use(corsMiddleware(cfg.AllowedOrigins))
 
-	r.GET("/health", func(c *gin.Context) {
+	v1 := r.Group("/v1")
+	v1.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 

@@ -1,4 +1,4 @@
-.PHONY: dev dev-up dev-down \
+.PHONY: dev dev-be dev-wa dev-up dev-down \
         build build-wa build-be \
         deploy-wa deploy-site \
         test test-be \
@@ -9,6 +9,12 @@
 
 dev:          ## Start everything: Redis + backend (air) + webapp (vite)
 	@bash scripts/dev.sh
+
+dev-be:       ## Start Redis + backend only (air)
+	@bash scripts/backend.sh
+
+dev-wa:       ## Start webapp dev server only (vite)
+	@bash scripts/webapp.sh
 
 # ── Infrastructure ────────────────────────────────────────────────────────────
 
