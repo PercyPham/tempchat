@@ -1,0 +1,13 @@
+services:
+  redis:
+    image: redis:9-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --notify-keyspace-events Ex
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
