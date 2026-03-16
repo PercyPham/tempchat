@@ -4,7 +4,7 @@
 
 All authenticated requests (REST and WebSocket) must include the `X-TempChat-Auth` header.
 
-**Format:** `Base64(Claims JSON).HMAC-SHA256-Hex(Base64(Claims JSON), roomAccessKey)`
+**Format:** `base64url(Claims JSON).base64url(HMAC-SHA256(base64url(Claims JSON), roomAccessKey))`
 
 **Claims Object:**
 

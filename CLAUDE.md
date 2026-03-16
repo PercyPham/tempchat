@@ -81,4 +81,3 @@ Authoritative references in `docs/design/`:
 - `redis_design.md` — key schema, TTL strategy, Lua boost script
 - `techstack_draft.md` — infra, deployment (DigitalOcean + Nginx + systemd)
 - `user_interaction_flows.md` — mobile UX flows
-- `test_design.md` — test design

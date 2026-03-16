@@ -1,7 +1,7 @@
 .PHONY: dev dev-be dev-wa dev-up dev-down dev-gui \
         build build-wa build-be \
         deploy-wa deploy-site \
-        test test-be \
+        test test-be test-wa test-integration \
         typecheck typecheck-wa typecheck-be \
         help
 
@@ -49,10 +49,23 @@ deploy-site:  ## Deploy site to Firebase Hosting (tempchat.app)
 # ── Test ──────────────────────────────────────────────────────────────────────
 
 test:         ## Run all tests
-	@$(MAKE) test-be
+	@$(MAKE) test-be test-wa test-integration
 
 test-be:      ## Run Go tests
 	cd backend && go test ./...
+
+test-wa:      ## Run webapp crypto unit tests (no infra needed)
+	cd webapp && pnpm exec vitest run src/lib/crypto.test.ts
+
+test-integration: ## Run webapp integration tests (starts test server on :8081, no Redis needed)
+	@echo "Starting test server (backend/.env.test)..."
+	@cd backend && go run ./cmd/testserver & \
+	  BE_PID=$$!; \
+	  sleep 1 && \
+	  cd webapp && pnpm exec vitest run src/lib/integration.test.ts; \
+	  STATUS=$$?; \
+	  kill $$BE_PID 2>/dev/null; \
+	  exit $$STATUS
 
 # ── Typecheck ─────────────────────────────────────────────────────────────────
 

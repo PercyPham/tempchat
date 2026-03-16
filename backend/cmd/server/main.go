@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	godotenv.Load() // load .env if present
+	godotenv.Load() // .env (no-op if absent)
 	config.Load()
 
 	gin.SetMode(config.App().GinMode)
