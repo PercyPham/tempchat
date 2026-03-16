@@ -25,9 +25,12 @@ make dev-down     # Stop infrastructure
 make build-be     # Compile Go backend
 make build-wa     # Build React webapp
 
-make test-be      # Run Go tests
-make typecheck-wa # tsc --noEmit on webapp
-make typecheck-be # go vet on backend
+make test             # Run all tests (test-be + test-wa + test-integration)
+make test-be          # Run Go unit tests (go test ./...)
+make test-wa          # Run webapp crypto unit tests (Vitest)
+make test-integration # Run webapp integration tests against test server (:8081)
+make typecheck-wa     # tsc --noEmit on webapp
+make typecheck-be     # go vet on backend
 
 make deploy-wa    # Deploy webapp to Firebase Hosting
 make deploy-site  # Deploy marketing site to Firebase Hosting
