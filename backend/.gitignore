@@ -8,8 +8,10 @@ server
 .env.staging
 .env.production
 
+
 # Go test cache
 *.test
+!.env.test
 
 # Go workspace
 go.work

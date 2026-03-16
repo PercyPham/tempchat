@@ -8,11 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/percypham/tempchat/internal/auth"
-	"github.com/percypham/tempchat/internal/config"
+	"github.com/percypham/tempchat/internal/common/config"
 )
 
 func main() {
-	godotenv.Load(".env.test")
+	godotenv.Load(".env.testenv")
 	config.Load()
 	gin.SetMode(gin.TestMode)
 

@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 import { describe, it, expect, beforeAll } from "vitest";
 import { generateSecret, deriveRoomAccessKey, genAuthToken, toBase64url } from "./crypto";
 
@@ -10,9 +12,7 @@ beforeAll(async () => {
     .then((r) => r.ok)
     .catch(() => false);
   if (!reachable) {
-    console.warn(
-      `[integration] Backend not reachable at ${BACKEND_URL} — skipping all integration tests`,
-    );
+    console.warn(`[integration] Backend not reachable at ${BACKEND_URL} — skipping all integration tests`);
   }
 });
 

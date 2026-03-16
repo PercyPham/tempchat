@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"github.com/percypham/tempchat/internal/config"
+	"github.com/percypham/tempchat/internal/common/config"
 )
 
 func main() {
