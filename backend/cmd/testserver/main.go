@@ -12,13 +12,14 @@ import (
 )
 
 func main() {
-	godotenv.Load(".env.testenv")
+	godotenv.Load(".env.test")
 	config.Load()
 	gin.SetMode(gin.TestMode)
 
 	r := gin.Default()
 
 	v1 := r.Group("/v1")
+	v1.GET("/health", func(c *gin.Context) { c.Status(http.StatusOK) })
 	v1.POST("/test/echo-claims", echoClaimsHandler)
 
 	addr := ":" + config.App().Port

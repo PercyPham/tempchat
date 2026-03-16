@@ -73,7 +73,7 @@ describe("genAuthToken", () => {
     const key = await generateSecret();
     const rak = await deriveRoomAccessKey(key);
     const token = await genAuthToken(
-      { rid: "room-1", uid: "user-1", ts: Math.floor(Date.now() / 1000) },
+      { rid: "room-1", uid: "user-1", ts: Date.now() },
       rak,
     );
     expect(token).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
@@ -82,7 +82,7 @@ describe("genAuthToken", () => {
   it("claims decode to expected JSON fields", async () => {
     const key = await generateSecret();
     const rak = await deriveRoomAccessKey(key);
-    const ts = Math.floor(Date.now() / 1000);
+    const ts = Date.now();
     const token = await genAuthToken({ rid: "room-x", uid: "user-y", ts }, rak);
     const claimsPart = token.split(".")[0];
     const decoded = JSON.parse(
@@ -99,7 +99,7 @@ describe("genAuthToken", () => {
     const key = await generateSecret();
     const rak = await deriveRoomAccessKey(key);
     const token = await genAuthToken(
-      { rid: "room-1", uid: null, ts: Math.floor(Date.now() / 1000) },
+      { rid: "room-1", uid: null, ts: Date.now() },
       rak,
     );
     expect(token).toBeTruthy();
@@ -117,8 +117,8 @@ describe("genAuthToken", () => {
   it("is deterministic for the same inputs", async () => {
     const key = await generateSecret();
     const rak = await deriveRoomAccessKey(key);
-    const ts = 1700000000;
-    vi.spyOn(Date, "now").mockReturnValue(ts * 1000);
+    const ts = 1700000000000;
+    vi.spyOn(Date, "now").mockReturnValue(ts);
     const t1 = await genAuthToken({ rid: "r", uid: "u", ts }, rak);
     const t2 = await genAuthToken({ rid: "r", uid: "u", ts }, rak);
     expect(t1).toBe(t2);

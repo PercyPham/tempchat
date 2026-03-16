@@ -49,7 +49,7 @@ To prevent replay attacks and unauthorized access, TempChat uses a signed-claim 
 
 3. **Server Validation:**
    - **Signature Verification:** Server retrieves the stored `roomAccessKey` for the `roomId` and re-calculates the HMAC of the received claims.
-   - **Drift Check:** The server verifies that the `ts` (timestamp) in the claims is within a **±5 second window** of the current server time to prevent replayed requests.
+   - **Drift Check:** The server verifies that the `ts` (timestamp in milliseconds) in the claims is within a **±5000 ms window** of the current server time to prevent replayed requests.
 
 4. **Receiver:** Fetches the payload, uses the `secret` from their URL hash to decrypt, and matches the `userId` against the member directory.
 

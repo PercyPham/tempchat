@@ -242,7 +242,7 @@ Covers the full client-side crypto layer without any network or infrastructure:
 Requires the test server (started automatically by `make test-integration`). Tests the full auth token flow end-to-end:
 
 - Valid token accepted — claims echoed back correctly
-- Expired / future tokens rejected (outside the ±5 s drift window)
+- Expired / future tokens rejected (outside the ±5000 ms drift window)
 - Tampered signatures rejected
 - Malformed and empty tokens rejected
 - Null uid join tokens accepted

@@ -10,7 +10,8 @@
       "Bash(chmod:*)",
       "Bash(firebase:*)",
       "Bash(grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(go vet:*)"
     ]
   }
 }

@@ -12,7 +12,7 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
 {
   "rid": "room-uuid",
   "uid": "user-uuid", // Null for the initial 'join' request
-  "ts": 1715432000    // Unix timestamp (seconds)
+  "ts": 1715432000000 // Unix timestamp (milliseconds)
 }
 ```
 

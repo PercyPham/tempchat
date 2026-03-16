@@ -59,12 +59,18 @@ test-wa:      ## Run webapp crypto unit tests (no infra needed)
 
 test-integration: ## Run webapp integration tests (starts test server on :8081, no Redis needed)
 	@echo "Starting test server (backend/.env.test)..."
-	@cd backend && go run ./cmd/testserver & \
+	@TEST_PORT=$$(grep -E '^PORT=' backend/.env.test | cut -d= -f2); \
+	  lsof -ti :$$TEST_PORT | xargs kill 2>/dev/null; true; \
+	  cd backend && go run ./cmd/testserver & \
 	  BE_PID=$$!; \
-	  sleep 1 && \
+	  echo "Waiting for test server..."; \
+	  for i in $$(seq 1 20); do \
+	    curl -sf http://localhost:$$TEST_PORT/v1/health > /dev/null 2>&1 && break; \
+	    sleep 0.5; \
+	  done; \
 	  cd webapp && pnpm exec vitest run src/lib/integration.test.ts; \
 	  STATUS=$$?; \
-	  kill $$BE_PID 2>/dev/null; \
+	  lsof -ti :$$TEST_PORT | xargs kill 2>/dev/null; \
 	  exit $$STATUS
 
 # ── Typecheck ─────────────────────────────────────────────────────────────────

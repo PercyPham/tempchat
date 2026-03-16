@@ -3,7 +3,10 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { generateSecret, deriveRoomAccessKey, genAuthToken, toBase64url } from "./crypto";
 
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8080";
+const BACKEND_URL = process.env.BACKEND_URL;
+if (!BACKEND_URL) {
+  throw new Error("BACKEND_URL is not set. Please set it in your environment variables.");
+}
 
 let reachable = false;
 
@@ -37,7 +40,7 @@ describe("Flow 1 — valid token round-trip", () => {
     if (!reachable) return;
 
     const { rak, accessKey } = await makeAccessKeyAndRak();
-    const ts = Math.floor(Date.now() / 1000);
+    const ts = Date.now();
     const token = await genAuthToken({ rid: "test-room", uid: "test-user", ts }, rak);
 
     const res = await echoClaims(accessKey, token);
@@ -46,7 +49,7 @@ describe("Flow 1 — valid token round-trip", () => {
     const body = await res.json();
     expect(body.rid).toBe("test-room");
     expect(body.uid).toBe("test-user");
-    expect(Math.abs(body.ts - ts)).toBeLessThanOrEqual(1);
+    expect(Math.abs(body.ts - ts)).toBeLessThanOrEqual(1000);
   });
 });
 
@@ -54,7 +57,7 @@ describe("Flow 2 — auth rejection cases", () => {
   it("expired token (ts = now - 10) → 401", async () => {
     if (!reachable) return;
     const { rak, accessKey } = await makeAccessKeyAndRak();
-    const ts = Math.floor(Date.now() / 1000) - 10;
+    const ts = Date.now() - 10000;
     const token = await genAuthToken({ rid: "r", uid: "u", ts }, rak);
     const res = await echoClaims(accessKey, token);
     expect(res.status).toBe(401);
@@ -63,7 +66,7 @@ describe("Flow 2 — auth rejection cases", () => {
   it("future token (ts = now + 10) → 401", async () => {
     if (!reachable) return;
     const { rak, accessKey } = await makeAccessKeyAndRak();
-    const ts = Math.floor(Date.now() / 1000) + 10;
+    const ts = Date.now() + 10000;
     const token = await genAuthToken({ rid: "r", uid: "u", ts }, rak);
     const res = await echoClaims(accessKey, token);
     expect(res.status).toBe(401);
@@ -72,7 +75,7 @@ describe("Flow 2 — auth rejection cases", () => {
   it("tampered signature → 401", async () => {
     if (!reachable) return;
     const { rak, accessKey } = await makeAccessKeyAndRak();
-    const ts = Math.floor(Date.now() / 1000);
+    const ts = Date.now();
     const token = await genAuthToken({ rid: "r", uid: "u", ts }, rak);
     const [claims, sig] = token.split(".");
     const tampered = `${claims}.${sig.slice(0, -3)}XXX`;
@@ -104,7 +107,7 @@ describe("Flow 3 — uid: null join token", () => {
   it("server parses uid as null", async () => {
     if (!reachable) return;
     const { rak, accessKey } = await makeAccessKeyAndRak();
-    const ts = Math.floor(Date.now() / 1000);
+    const ts = Date.now();
     const token = await genAuthToken({ rid: "test-room", uid: null, ts }, rak);
 
     const res = await echoClaims(accessKey, token);

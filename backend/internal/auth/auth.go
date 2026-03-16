@@ -59,12 +59,12 @@ func VerifyRoomAccessToken(token string, accessKey []byte) (*RoomAccessTokenClai
 		return nil, ErrMalformed
 	}
 
-	now := time.Now().Unix()
+	now := time.Now().UnixMilli()
 	diff := claims.Ts - now
 	if diff < 0 {
 		diff = -diff
 	}
-	if diff > 5 {
+	if diff > 5000 {
 		return nil, ErrExpired
 	}
 

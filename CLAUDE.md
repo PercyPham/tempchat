@@ -36,6 +36,8 @@ make deploy-wa    # Deploy webapp to Firebase Hosting
 make deploy-site  # Deploy marketing site to Firebase Hosting
 ```
 
+**Testing rule:** Run `make test` (not just `test-be` or `test-wa`) when changes touch both `backend/` and `webapp/`, so integration tests are included.
+
 **Prerequisites:** Go 1.22+, Node.js 20+, Docker, `air` (Go hot-reload), Firebase CLI.
 
 ## Architecture
