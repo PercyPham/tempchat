@@ -16,16 +16,17 @@ func GetBoostOptions() gin.HandlerFunc {
 			entry := gin.H{
 				"id":              o.ID,
 				"name":            o.Name,
-				"ttlMs":           o.TtlMs,
+				"ttlMs":           o.TTL.Milliseconds(),
 				"maxParticipants": o.MaxParticipants,
 				"maxEvents":       o.MaxEvents,
 				"price":           o.Price,
 			}
-			if o.RegionPricing != nil {
-				entry["regionPricing"] = gin.H{
-					"region": o.RegionPricing.Region,
-					"price":  o.RegionPricing.Price,
+			if len(o.RegionalPrices) > 0 {
+				rp := make([]gin.H, len(o.RegionalPrices))
+				for j, r := range o.RegionalPrices {
+					rp[j] = gin.H{"region": r.Region, "price": r.Price}
 				}
+				entry["regionalPrices"] = rp
 			}
 			resp[i] = entry
 		}

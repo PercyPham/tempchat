@@ -1,12 +1,18 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/percypham/tempchat/internal/cleanup"
 	"github.com/percypham/tempchat/internal/common/config"
 	"github.com/percypham/tempchat/internal/handler"
 	"github.com/percypham/tempchat/internal/hub"
@@ -40,14 +46,39 @@ func main() {
 	authed := v1.Group("", middleware.RequireAuth(s))
 	authed.GET("/rooms/:roomId", handler.GetRoom(s))
 	authed.POST("/rooms/:roomId/join", handler.JoinRoom(s, h))
+	authed.DELETE("/rooms/:roomId/members/me", handler.LeaveRoom(s, h))
 	authed.GET("/rooms/:roomId/events", handler.GetEvents(s))
 	authed.GET("/rooms/:roomId/ws", handler.WsHandler(s, h))
 
-	addr := ":" + config.App().Port
-	log.Printf("Server starting on %s", addr)
-	if err := r.Run(addr); err != nil {
-		log.Fatalf("Server failed: %v", err)
+	workerCtx, cancelWorkers := context.WithCancel(context.Background())
+	defer cancelWorkers()
+	go cleanup.Run(workerCtx, rdb)
+
+	srv := &http.Server{
+		Addr:    ":" + config.App().Port,
+		Handler: r,
 	}
+
+	go func() {
+		log.Printf("Server starting on %s", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server...")
+
+	cancelWorkers()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("Server forced shutdown: %v", err)
+	}
+	log.Println("Server exited cleanly")
 }
 
 func corsMiddleware(allowedOrigins string) gin.HandlerFunc {

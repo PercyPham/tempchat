@@ -3,24 +3,25 @@
 // for payment records) can implement this interface independently.
 package store
 
-import "context"
+import "github.com/percypham/tempchat/internal/appctx"
 
 // Store is the primary storage interface for room and event operations.
 type Store interface {
-	CreateRoom(ctx context.Context, req CreateRoomRequest) (*CreateRoomResult, error)
-	GetRoom(ctx context.Context, roomID string) (*Room, error)
-	GetRoomAccessKey(ctx context.Context, roomID string) ([]byte, error)
-	JoinRoom(ctx context.Context, roomID, displayName string) (*JoinResult, error)
-	SetUserLeft(ctx context.Context, roomID, userID string) error
-	AppendMessage(ctx context.Context, roomID, userID, ciphertext string) (*Event, error)
-	GetEvents(ctx context.Context, roomID string, afterEid int64) ([]Event, error)
+	CreateRoom(ctx appctx.AppCtx, req CreateRoomRequest) (*CreateRoomResult, error)
+	GetRoom(ctx appctx.AppCtx, roomID string) (*Room, error)
+	GetRoomAccessKey(ctx appctx.AppCtx, roomID string) ([]byte, error)
+	JoinRoom(ctx appctx.AppCtx, roomID, name string) (*JoinResult, error)
+	SetUserLeft(ctx appctx.AppCtx, roomID, userID string) (int64, error)
+	AppendMessage(ctx appctx.AppCtx, roomID, userID, ciphertext string) (*Event, error)
+	GetEvents(ctx appctx.AppCtx, roomID string, afterEid int64) ([]Event, error)
+	GetUserJoinEid(ctx appctx.AppCtx, roomID, userID string) (int64, error)
 }
 
 // CreateRoomRequest is the input for creating a new room.
 type CreateRoomRequest struct {
-	Name        string
+	Name        string // AES-GCM ciphertext (base64) of the room name; opaque to server
 	AccessKey   []byte // raw HMAC key bytes derived client-side via PBKDF2
-	CreatorName string
+	CreatorName string // AES-GCM ciphertext (base64) of the creator's display name; opaque to server
 }
 
 // CreateRoomResult is returned after a room is successfully created.
@@ -53,8 +54,10 @@ type Room struct {
 
 // Member is a user in the room's member list.
 type Member struct {
-	UID  string
-	Name string
+	UID      string
+	Name     string // AES-GCM ciphertext (base64) of the display name; opaque to server
+	JoinedAt int64  // unix ms
+	LeftAt   int64  // unix ms; 0 if still in room
 }
 
 // Event is a single entry in the room event log.

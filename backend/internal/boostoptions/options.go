@@ -2,8 +2,10 @@
 // Options are served from memory; pricing can be region-specific.
 package boostoptions
 
-// RegionPricing holds a localised price for a specific region.
-type RegionPricing struct {
+import "time"
+
+// RegionalPrice holds a localised price for a specific region.
+type RegionalPrice struct {
 	Region string // ISO 3166-1 alpha-2, e.g. "VN"
 	Price  string // display string, e.g. "69.000 ₫"
 }
@@ -12,35 +14,54 @@ type RegionPricing struct {
 type BoostOption struct {
 	ID              string
 	Name            string
-	TtlMs           int64 // duration added to room expiry, in milliseconds
+	TTL             time.Duration
 	MaxParticipants int
 	MaxEvents       int
-	Price           string         // international display price
-	RegionPricing   *RegionPricing // nil when no region-specific pricing applies
+	Price           string          // default display price
+	RegionalPrices  []RegionalPrice // per-region overrides; nil = none
+}
+
+// PriceFor returns the display price for the given region (ISO 3166-1 alpha-2),
+// falling back to the default Price if no regional override exists.
+func (o BoostOption) PriceFor(region string) string {
+	for _, rp := range o.RegionalPrices {
+		if rp.Region == region {
+			return rp.Price
+		}
+	}
+	return o.Price
 }
 
 var options = []BoostOption{
 	{
 		ID:              "boost_plus",
 		Name:            "Plus Boost",
-		TtlMs:           86_400_000, // 24 hours
+		TTL:             24 * time.Hour,
 		MaxParticipants: 10,
 		MaxEvents:       100,
-		Price:           "$2.99",
-		RegionPricing:   &RegionPricing{Region: "VN", Price: "69.000 ₫"},
+		Price:           "$5",
+		RegionalPrices:  []RegionalPrice{{Region: "VN", Price: "20.000 ₫"}},
 	},
 	{
 		ID:              "boost_pro",
 		Name:            "Pro Boost",
-		TtlMs:           604_800_000, // 7 days
+		TTL:             7 * 24 * time.Hour,
 		MaxParticipants: 50,
 		MaxEvents:       100,
-		Price:           "$9.99",
-		RegionPricing:   &RegionPricing{Region: "VN", Price: "229.000 ₫"},
+		Price:           "$10",
+		RegionalPrices:  []RegionalPrice{{Region: "VN", Price: "50.000 ₫"}},
 	},
 }
 
-// GetBoostOptions returns the full list of available boost options.
-func GetBoostOptions() []BoostOption {
-	return options
+// GetBoostOptions returns all available boost options.
+func GetBoostOptions() []BoostOption { return options }
+
+// GetBoostOption returns the option with the given ID, or false if not found.
+func GetBoostOption(id string) (BoostOption, bool) {
+	for _, o := range options {
+		if o.ID == id {
+			return o, true
+		}
+	}
+	return BoostOption{}, false
 }

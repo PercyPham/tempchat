@@ -1,18 +1,18 @@
 package redis
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/percypham/tempchat/internal/appctx"
 	"github.com/percypham/tempchat/internal/store"
 	"github.com/redis/go-redis/v9"
 )
 
 // AppendMessage assigns an eid, stores the encrypted message in the events
 // sorted set, trims to maxEvents, and returns the stored event.
-func (s *Store) AppendMessage(ctx context.Context, roomID, userID, ciphertext string) (*store.Event, error) {
+func (s *Store) AppendMessage(ctx appctx.AppCtx, roomID, userID, ciphertext string) (*store.Event, error) {
 	meta, err := s.rdb.HGetAll(ctx, keyMeta(roomID)).Result()
 	if err != nil || len(meta) == 0 {
 		return nil, ErrRoomNotFound
@@ -25,7 +25,7 @@ func (s *Store) AppendMessage(ctx context.Context, roomID, userID, ciphertext st
 		return nil, err
 	}
 
-	nowMs := time.Now().UnixMilli()
+	nowMs := ctx.Now.UnixMilli()
 	event := map[string]any{
 		"eid": eid,
 		"uid": userID,
@@ -55,7 +55,7 @@ func (s *Store) AppendMessage(ctx context.Context, roomID, userID, ciphertext st
 }
 
 // GetEvents returns all events with eid > afterEid, in ascending order.
-func (s *Store) GetEvents(ctx context.Context, roomID string, afterEid int64) ([]store.Event, error) {
+func (s *Store) GetEvents(ctx appctx.AppCtx, roomID string, afterEid int64) ([]store.Event, error) {
 	min := fmt.Sprintf("(%d", afterEid) // exclusive lower bound
 	results, err := s.rdb.ZRangeByScore(ctx, keyEvents(roomID), &redis.ZRangeBy{
 		Min: min,

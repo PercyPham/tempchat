@@ -57,20 +57,24 @@ test-be:      ## Run Go tests
 test-wa:      ## Run webapp crypto unit tests (no infra needed)
 	cd webapp && pnpm exec vitest run src/lib/crypto.test.ts
 
-test-integration: ## Run webapp integration tests (starts test server on :8081, no Redis needed)
-	@echo "Starting test server (backend/.env.test)..."
-	@TEST_PORT=$$(grep -E '^PORT=' backend/.env.test | cut -d= -f2); \
-	  lsof -ti :$$TEST_PORT | xargs kill 2>/dev/null; true; \
-	  cd backend && go run ./cmd/testserver & \
-	  BE_PID=$$!; \
-	  echo "Waiting for test server..."; \
-	  for i in $$(seq 1 20); do \
-	    curl -sf http://localhost:$$TEST_PORT/v1/health > /dev/null 2>&1 && break; \
+test-integration: ## Run webapp integration tests (starts Redis + two test server instances on :8081 and :8082)
+	@echo "Ensuring Redis is running..."
+	docker compose -f docker-compose.dev.yml up -d redis
+	@echo "Starting test server instances on :8081 and :8082..."
+	@lsof -ti :8081 | xargs kill 2>/dev/null; true
+	@lsof -ti :8082 | xargs kill 2>/dev/null; true
+	@(cd backend && go run ./cmd/testserver) & \
+	  (cd backend && PORT=8082 go run ./cmd/testserver) & \
+	  echo "Waiting for both instances to be healthy..."; \
+	  for i in $$(seq 1 40); do \
+	    curl -sf http://localhost:8081/v1/health > /dev/null 2>&1 && \
+	    curl -sf http://localhost:8082/v1/health > /dev/null 2>&1 && break; \
 	    sleep 0.5; \
 	  done; \
-	  cd webapp && pnpm exec vitest run src/lib/integration.test.ts; \
+	  cd webapp && pnpm exec vitest run tests/integration; \
 	  STATUS=$$?; \
-	  lsof -ti :$$TEST_PORT | xargs kill 2>/dev/null; \
+	  lsof -ti :8081 | xargs kill 2>/dev/null; \
+	  lsof -ti :8082 | xargs kill 2>/dev/null; \
 	  exit $$STATUS
 
 # ── Typecheck ─────────────────────────────────────────────────────────────────

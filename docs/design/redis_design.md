@@ -19,14 +19,14 @@
 
 Room configuration. Existence of this key is the source of truth for whether a room is alive.
 
-| Field              | Type         | Description                                                             |
-| ------------------ | ------------ | ----------------------------------------------------------------------- |
-| `room_name`        | string       | Immutable display name, set at creation                                 |
-| `access_key`       | string       | Hashed join token                                                       |
-| `max_participants` | integer      | Participant cap. Updated (MAX logic) when a boost is applied.           |
-| `max_events`       | integer      | Event cap. Updated (MAX logic) when a boost is applied.                 |
-| `created_at`       | integer (ms) | Unix timestamp of room creation                                         |
-| `expires_at`       | integer (ms) | Absolute expiry timestamp. Extended additively when a boost is applied. |
+| Field              | Type         | Description                                                                     |
+| ------------------ | ------------ | ------------------------------------------------------------------------------- |
+| `name`             | string       | AES-GCM ciphertext (base64) of the room name; opaque to server, set at creation |
+| `access_key`       | string       | Hashed join token                                                               |
+| `max_participants` | integer      | Participant cap. Updated (MAX logic) when a boost is applied.                   |
+| `max_events`       | integer      | Event cap. Updated (MAX logic) when a boost is applied.                         |
+| `created_at`       | integer (ms) | Unix timestamp of room creation                                                 |
+| `expires_at`       | integer (ms) | Absolute expiry timestamp. Extended additively when a boost is applied.         |
 
 ---
 
@@ -47,12 +47,12 @@ Tracks **all users who ever joined**, including those who have left. Never remov
 
 Ephemeral user identity, scoped to the room. `userId` is only unique within a room.
 
-| Field          | Type         | Description                                                          |
-| -------------- | ------------ | -------------------------------------------------------------------- |
-| `display_name` | string       | Chosen nickname                                                      |
-| `joined_at`    | integer (ms) | Join timestamp                                                       |
-| `join_eid`     | integer      | Value of `event_seq` at join time. Lower bound for event range query |
-| `left_at`      | integer (ms) | Leave timestamp. Absent if user is still in room                     |
+| Field       | Type         | Description                                                          |
+| ----------- | ------------ | -------------------------------------------------------------------- |
+| `name`      | string       | AES-GCM ciphertext (base64) of the chosen nickname; opaque to server |
+| `joined_at` | integer (ms) | Join timestamp                                                       |
+| `join_eid`  | integer      | Value of `event_seq` at join time. Lower bound for event range query |
+| `left_at`   | integer (ms) | Leave timestamp. Absent if user is still in room                     |
 
 ---
 

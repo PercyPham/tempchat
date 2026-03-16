@@ -24,8 +24,9 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
 - **Payload:**
   ```
   {
-    "name": "Project X Sync",
-    "accessKey": "pbkdf2_derived_rak_string"
+    "name": "<AES-GCM ciphertext (base64) of the room name>",
+    "accessKey": "pbkdf2_derived_rak_string",
+    "creatorName": "<AES-GCM ciphertext (base64) of the creator's display name>"
   }
   ```
 - **Response:** `201 Created`
@@ -33,7 +34,9 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
   {
     "roomId": "...",
     "createdAt": 1715432000,
-    "expiresAt": 1715442800
+    "expiresAt": 1715442800,
+    "userId": "...",
+    "joinEid": 1
   }
   ```
 
@@ -41,20 +44,20 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
 
 - **Endpoint:** `POST /v1/rooms/:roomId/join`
 - **Header:** Requires `X-TempChat-Auth` signed with `roomAccessKey`.
-- **Payload:** `{ "displayName": "Alice" }`
+- **Payload:** `{ "name": "<AES-GCM ciphertext (base64) of the display name>" }`
 - **Response:** `200 OK`
   ```
   {
     "userId": "user-uuid-xyz",
     "joinEid": 142,
     "room": {
-      "name": "Project X Sync",
+      "name": "<AES-GCM ciphertext (base64) of the room name>",
       "expiresAt": 1715442800,
       "memberCount": 2,
       "maxParticipants": 5,
       "members": [
-        { "uid": "user-uuid-abc", "name": "Bob" },
-        { "uid": "user-uuid-xyz", "name": "Alice" }
+        { "uid": "user-uuid-abc", "name": "<AES-GCM ciphertext (base64) of display name>" },
+        { "uid": "user-uuid-xyz", "name": "<AES-GCM ciphertext (base64) of display name>" }
       ]
     }
   }
@@ -70,22 +73,30 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
 - **Endpoint:** `GET /v1/rooms/:roomId`
 - **Header:** Requires `X-TempChat-Auth`.
 - **Description:** Used to refresh the full state of the room (e.g., after detecting a message gap). Also used by non-members after a `room_full` rejection to check current capacity before deciding whether to boost.
+- **Note on `memberCount` vs `members`:** `memberCount` reflects all slots ever occupied (including users who have explicitly left), since slots are not reclaimed. `members` contains only currently active members (those who have not yet left).
 - **Response:** `200 OK`
   ```
   {
-    "name": "Project X Sync",
+    "name": "<AES-GCM ciphertext (base64) of the room name>",
     "expiresAt": 1715442800,
     "memberCount": 5,
     "maxParticipants": 5,
     "maxEvents": 50,
     "members": [
-      { "uid": "user-uuid-abc", "name": "Bob" },
-      { "uid": "user-uuid-xyz", "name": "Alice" }
+      { "uid": "user-uuid-abc", "name": "<AES-GCM ciphertext (base64) of display name>" },
+      { "uid": "user-uuid-xyz", "name": "<AES-GCM ciphertext (base64) of display name>" }
     ]
   }
   ```
 
-### **2.4 Fetch Boost Options**
+### **2.4 Leave Room**
+
+- **Endpoint:** `DELETE /v1/rooms/:roomId/members/me`
+- **Header:** Requires `X-TempChat-Auth` with a non-null `uid`.
+- **Description:** Called when a user explicitly chooses "Leave & Delete Room". Records `left_at` for the caller, appends a `left` system event, and broadcasts `user:left` to all connected clients. The user's slot remains counted in `memberCount` permanently — slots are not reclaimed.
+- **Response:** `204 No Content`
+
+### **2.5 Fetch Boost Options**
 
 - **Endpoint:** `GET /v1/boost-options`
 - **Auth:** None required (public endpoint).
@@ -112,13 +123,13 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
   ]
   ```
 
-### **2.5 Boost (Payment-Triggered)**
+### **2.6 Boost (Payment-Triggered)**
 
 Room boosts are applied via payment webhook callbacks (SePay / Paddle). The payment flow and webhook endpoint design are TBD. Once payment is confirmed, the server runs the atomic Lua boost script and broadcasts a `room:boosted` WebSocket event to all connected clients.
 
 Non-members boosting from the "Room Full" screen authenticate with `uid: null` (same pattern as the initial join request), using the `roomAccessKey` from the URL hash.
 
-### **2.6 Fetch Events**
+### **2.7 Fetch Events**
 
 - **Endpoint:** `GET /v1/rooms/:roomId/events?afterEid=142`
 - **Header:** Requires `X-TempChat-Auth`.
@@ -127,8 +138,8 @@ Non-members boosting from the "Room Full" screen authenticate with `uid: null` (
 - **Response:**
   ```
   [
-    { "eid": 143, "uid": "user-uuid-abc", "msg": "cipher_blob", "ts": 1715435005 },
-    { "eid": 144, "type": "joined", "uid": "user-uuid-abc", "ts": 1715435010 }
+    { "eid": 143, "uid": "user-uuid-abc", "msg": "cipher_blob", "ts": 1715435005000 },
+    { "eid": 144, "type": "joined", "uid": "user-uuid-abc", "ts": 1715435010000 }
   ]
   ```
 
@@ -144,7 +155,7 @@ Non-members boosting from the "Room Full" screen authenticate with `uid: null` (
 
 | **Event**         | **Payload**                                                                                                                                                      | **Description**                                                                                                                                 |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `message:receive` | `{ "eid": 145, "uid": "...", "msg": "...", "ts": ts }`                                                                                                           | Standard chat message.                                                                                                                          |
+| `message:received` | `{ "eid": 145, "uid": "...", "msg": "...", "ts": ts }`                                                                                                           | Standard chat message.                                                                                                                          |
 | `user:joined`     | `{ "eid": 146, "type": "joined", "uid": "...", "ts": ts }`                                                                                                       | User join system event.                                                                                                                         |
 | `user:left`       | `{ "eid": 147, "type": "left", "uid": "...", "ts": ts }`                                                                                                         | User leave system event.                                                                                                                        |
 | `room:boosted`    | `{ "eid": 148, "type": "boosted", "uid": "..." \| null, "boostId": "boost_abc123", "expiresAt": 1715529200, "maxParticipants": 50, "maxEvents": 100, "ts": ts }` | Broadcast when a paid boost is confirmed. `uid` is null if the booster was a non-member. Clients update their local room state and status pill. |

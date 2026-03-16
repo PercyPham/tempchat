@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/percypham/tempchat/internal/appctx"
 	"github.com/percypham/tempchat/internal/hub"
 	"github.com/percypham/tempchat/internal/store"
 	storeredis "github.com/percypham/tempchat/internal/store/redis"
@@ -14,9 +15,9 @@ import (
 
 // createRoomBody is the request body for POST /v1/rooms.
 type createRoomBody struct {
-	Name        string `json:"name"        binding:"required"`
+	Name        string `json:"name"        binding:"required"` // AES-GCM ciphertext (base64) of the room name
 	AccessKey   string `json:"accessKey"   binding:"required"` // base64url-encoded raw key bytes
-	CreatorName string `json:"creatorName" binding:"required"`
+	CreatorName string `json:"creatorName" binding:"required"` // AES-GCM ciphertext (base64) of the creator's display name
 }
 
 // CreateRoom handles POST /v1/rooms.
@@ -34,7 +35,8 @@ func CreateRoom(s store.Store) gin.HandlerFunc {
 			return
 		}
 
-		result, err := s.CreateRoom(c.Request.Context(), store.CreateRoomRequest{
+		ctx := appctx.FromGin(c)
+		result, err := s.CreateRoom(ctx, store.CreateRoomRequest{
 			Name:        body.Name,
 			AccessKey:   accessKey,
 			CreatorName: body.CreatorName,
@@ -58,7 +60,8 @@ func CreateRoom(s store.Store) gin.HandlerFunc {
 func GetRoom(s store.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		roomID := c.Param("roomId")
-		room, err := s.GetRoom(c.Request.Context(), roomID)
+		ctx := appctx.FromGin(c)
+		room, err := s.GetRoom(ctx, roomID)
 		if err != nil {
 			if errors.Is(err, storeredis.ErrRoomNotFound) {
 				c.JSON(http.StatusNotFound, gin.H{"error": "room_not_found"})
@@ -73,7 +76,7 @@ func GetRoom(s store.Store) gin.HandlerFunc {
 
 // joinRoomBody is the request body for POST /v1/rooms/:roomId/join.
 type joinRoomBody struct {
-	DisplayName string `json:"displayName" binding:"required"`
+	Name string `json:"name" binding:"required"` // AES-GCM ciphertext (base64) of the display name
 }
 
 // JoinRoom handles POST /v1/rooms/:roomId/join.
@@ -87,7 +90,8 @@ func JoinRoom(s store.Store, h *hub.Hub) gin.HandlerFunc {
 			return
 		}
 
-		result, err := s.JoinRoom(c.Request.Context(), roomID, body.DisplayName)
+		ctx := appctx.FromGin(c)
+		result, err := s.JoinRoom(ctx, roomID, body.Name)
 		if err != nil {
 			if errors.Is(err, storeredis.ErrRoomFull) {
 				c.JSON(http.StatusForbidden, gin.H{"error": "room_full"})
@@ -102,10 +106,11 @@ func JoinRoom(s store.Store, h *hub.Hub) gin.HandlerFunc {
 		}
 
 		// broadcast user:joined to all connected clients
-		_ = h.Publish(c.Request.Context(), roomID, gin.H{
+		_ = h.Publish(ctx, roomID, gin.H{
 			"event": "user:joined",
 			"eid":   result.JoinEid,
 			"uid":   result.UserID,
+			"ts":    ctx.Now.UnixMilli(),
 		})
 
 		members := make([]gin.H, len(result.Room.Members))
@@ -124,7 +129,11 @@ func JoinRoom(s store.Store, h *hub.Hub) gin.HandlerFunc {
 func roomToResponse(r *store.Room) gin.H {
 	members := make([]gin.H, len(r.Members))
 	for i, m := range r.Members {
-		members[i] = gin.H{"uid": m.UID, "name": m.Name}
+		entry := gin.H{"uid": m.UID, "name": m.Name, "joinedAt": m.JoinedAt}
+		if m.LeftAt != 0 {
+			entry["leftAt"] = m.LeftAt
+		}
+		members[i] = entry
 	}
 	return gin.H{
 		"name":            r.Name,

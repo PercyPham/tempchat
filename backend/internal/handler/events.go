@@ -5,6 +5,9 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/percypham/tempchat/internal/appctx"
+	"github.com/percypham/tempchat/internal/auth"
+	"github.com/percypham/tempchat/internal/middleware"
 	"github.com/percypham/tempchat/internal/store"
 )
 
@@ -23,7 +26,25 @@ func GetEvents(s store.Store) gin.HandlerFunc {
 			afterEid = parsed
 		}
 
-		events, err := s.GetEvents(c.Request.Context(), roomID, afterEid)
+		// Enforce join_eid as the minimum lower bound so users cannot fetch
+		// events that occurred before they joined.
+		ctx := appctx.FromGin(c)
+		if claims, ok := c.Get(middleware.ClaimsKey); ok {
+			if typed, ok := claims.(*auth.RoomAccessTokenClaims); ok && typed.Uid != nil {
+				joinEid, err := s.GetUserJoinEid(ctx, roomID, *typed.Uid)
+				if err == nil {
+					// joinEid is the eid of the user's own "joined" event; use
+					// joinEid-1 as the exclusive lower bound so the join event
+					// itself is included.
+					minAfterEid := joinEid - 1
+					if afterEid < minAfterEid {
+						afterEid = minAfterEid
+					}
+				}
+			}
+		}
+
+		events, err := s.GetEvents(ctx, roomID, afterEid)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal"})
 			return

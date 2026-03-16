@@ -75,7 +75,7 @@ Boost logic (additive expiry, MAX-based cap updates) is implemented as an atomic
 
 ### Boost/Monetization
 
-Three tiers stack additively on expiry (not from now): Free → Plus Boost (+24h, 20 users) → Pro Boost (+7d, 100 users). User/event caps use MAX logic.
+Three tiers stack additively on expiry (not from now): Free → Plus Boost (+24h, 10 users) → Pro Boost (+7d, 50 users). User/event caps use MAX logic.
 
 ## Design Docs
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/percypham/tempchat/internal/appctx"
 	"github.com/percypham/tempchat/internal/auth"
 	"github.com/percypham/tempchat/internal/store"
 	storeredis "github.com/percypham/tempchat/internal/store/redis"
@@ -24,8 +25,9 @@ func RequireAuth(s store.Store) gin.HandlerFunc {
 			return
 		}
 
+		ctx := appctx.FromGin(c)
 		roomID := c.Param("roomId")
-		accessKey, err := s.GetRoomAccessKey(c.Request.Context(), roomID)
+		accessKey, err := s.GetRoomAccessKey(ctx, roomID)
 		if err != nil {
 			if errors.Is(err, storeredis.ErrRoomNotFound) {
 				c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "room_not_found"})
@@ -35,7 +37,7 @@ func RequireAuth(s store.Store) gin.HandlerFunc {
 			return
 		}
 
-		claims, err := auth.VerifyRoomAccessToken(token, accessKey)
+		claims, err := auth.VerifyRoomAccessToken(ctx.Now, token, accessKey)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid_auth"})
 			return

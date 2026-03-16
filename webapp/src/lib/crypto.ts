@@ -5,7 +5,8 @@ export async function generateSecret(): Promise<CryptoKey> {
 const RAK_SALT = new TextEncoder().encode("rak");
 const RAK_ITERATIONS = 600_000;
 
-export async function deriveRoomAccessKey(secret: CryptoKey): Promise<CryptoKey> {
+// Derive Room Access Key
+export async function deriveRak(secret: CryptoKey): Promise<CryptoKey> {
   const rawSecret = await crypto.subtle.exportKey("raw", secret);
   const baseKey = await crypto.subtle.importKey("raw", rawSecret, "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey(
@@ -47,11 +48,27 @@ export function toBase64url(buf: ArrayBuffer | Uint8Array): string {
     .replace(/=+$/, "");
 }
 
+export async function rak2base64url(rak: CryptoKey): Promise<string> {
+  const raw = await crypto.subtle.exportKey("raw", rak);
+  return toBase64url(raw);
+}
+
+export async function base64url2rak(b64url: string): Promise<CryptoKey> {
+  const std = b64url.replace(/-/g, "+").replace(/_/g, "/");
+  const raw = Uint8Array.from(atob(std), (c) => c.charCodeAt(0));
+  return crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, true, ["sign"]);
+}
+
+export async function signWithRak(plaintext: string, rak: CryptoKey): Promise<string> {
+  const sigBuf = await crypto.subtle.sign("HMAC", rak, new TextEncoder().encode(plaintext));
+  return toBase64url(sigBuf);
+}
+
 export async function genAuthToken(
   claims: { rid: string; uid: string | null; ts: number },
   roomAccessKey: CryptoKey,
 ): Promise<string> {
   const encodedClaims = toBase64url(new TextEncoder().encode(JSON.stringify(claims)));
-  const sigBuf = await crypto.subtle.sign("HMAC", roomAccessKey, new TextEncoder().encode(encodedClaims));
-  return `${encodedClaims}.${toBase64url(sigBuf)}`;
+  const signature = await signWithRak(encodedClaims, roomAccessKey);
+  return `${encodedClaims}.${signature}`;
 }

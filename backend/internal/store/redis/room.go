@@ -1,7 +1,6 @@
 package redis
 
 import (
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	nanoid "github.com/matoous/go-nanoid/v2"
+	"github.com/percypham/tempchat/internal/appctx"
 	"github.com/percypham/tempchat/internal/store"
 	"github.com/redis/go-redis/v9"
 )
@@ -60,7 +60,7 @@ func keyKeys(roomID string) string { return fmt.Sprintf("room:%s:keys", roomID) 
 func keyPubSub(roomID string) string { return fmt.Sprintf("room:%s:pubsub", roomID) }
 
 // CreateRoom creates a new room and registers the creator as the first member.
-func (s *Store) CreateRoom(ctx context.Context, req store.CreateRoomRequest) (*store.CreateRoomResult, error) {
+func (s *Store) CreateRoom(ctx appctx.AppCtx, req store.CreateRoomRequest) (*store.CreateRoomResult, error) {
 	roomID, err := nanoid.New(10)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (s *Store) CreateRoom(ctx context.Context, req store.CreateRoomRequest) (*s
 		return nil, err
 	}
 
-	now := time.Now()
+	now := ctx.Now
 	nowMs := now.UnixMilli()
 	expiresAt := now.Add(freeTTL)
 	expiresAtMs := expiresAt.UnixMilli()
@@ -79,7 +79,7 @@ func (s *Store) CreateRoom(ctx context.Context, req store.CreateRoomRequest) (*s
 
 	// meta hash
 	pipe.HSet(ctx, keyMeta(roomID),
-		"room_name", req.Name,
+		"name", req.Name,
 		"access_key", hex.EncodeToString(req.AccessKey),
 		"max_participants", freeMaxParticipants,
 		"max_events", freeMaxEvents,
@@ -104,7 +104,7 @@ func (s *Store) CreateRoom(ctx context.Context, req store.CreateRoomRequest) (*s
 
 	// creator user meta (join_eid = 0 so they see all events from creation)
 	pipe.HSet(ctx, keyUserMeta(roomID, userID),
-		"display_name", req.CreatorName,
+		"name", req.CreatorName,
 		"joined_at", nowMs,
 		"join_eid", 0,
 	)
@@ -142,7 +142,7 @@ func (s *Store) CreateRoom(ctx context.Context, req store.CreateRoomRequest) (*s
 }
 
 // GetRoomAccessKey fetches only the access_key field from room meta.
-func (s *Store) GetRoomAccessKey(ctx context.Context, roomID string) ([]byte, error) {
+func (s *Store) GetRoomAccessKey(ctx appctx.AppCtx, roomID string) ([]byte, error) {
 	val, err := s.rdb.HGet(ctx, keyMeta(roomID), "access_key").Result()
 	if errors.Is(err, redis.Nil) {
 		return nil, ErrRoomNotFound
@@ -154,7 +154,7 @@ func (s *Store) GetRoomAccessKey(ctx context.Context, roomID string) ([]byte, er
 }
 
 // GetRoom reads the full room state including member list.
-func (s *Store) GetRoom(ctx context.Context, roomID string) (*store.Room, error) {
+func (s *Store) GetRoom(ctx appctx.AppCtx, roomID string) (*store.Room, error) {
 	meta, err := s.rdb.HGetAll(ctx, keyMeta(roomID)).Result()
 	if err != nil {
 		return nil, err
@@ -170,16 +170,25 @@ func (s *Store) GetRoom(ctx context.Context, roomID string) (*store.Room, error)
 
 	members := make([]store.Member, 0, len(users))
 	for uid := range users {
-		name, err := s.rdb.HGet(ctx, keyUserMeta(roomID, uid), "display_name").Result()
-		if err != nil {
+		fields, err := s.rdb.HMGet(ctx, keyUserMeta(roomID, uid), "name", "joined_at", "left_at").Result()
+		if err != nil || fields[0] == nil {
 			continue
 		}
-		members = append(members, store.Member{UID: uid, Name: name})
+		var leftAt int64
+		if fields[2] != nil && fields[2].(string) != "" {
+			leftAt = parseInt64(fields[2].(string))
+		}
+		members = append(members, store.Member{
+			UID:      uid,
+			Name:     fields[0].(string),
+			JoinedAt: parseInt64(fields[1].(string)),
+			LeftAt:   leftAt,
+		})
 	}
 
 	return &store.Room{
 		ID:              roomID,
-		Name:            meta["room_name"],
+		Name:            meta["name"],
 		CreatedAt:       parseInt64(meta["created_at"]),
 		ExpiresAt:       parseInt64(meta["expires_at"]),
 		MaxParticipants: int(parseInt64(meta["max_participants"])),
@@ -190,7 +199,7 @@ func (s *Store) GetRoom(ctx context.Context, roomID string) (*store.Room, error)
 }
 
 // JoinRoom adds a new user to an existing room.
-func (s *Store) JoinRoom(ctx context.Context, roomID, displayName string) (*store.JoinResult, error) {
+func (s *Store) JoinRoom(ctx appctx.AppCtx, roomID, name string) (*store.JoinResult, error) {
 	meta, err := s.rdb.HGetAll(ctx, keyMeta(roomID)).Result()
 	if err != nil {
 		return nil, err
@@ -217,12 +226,12 @@ func (s *Store) JoinRoom(ctx context.Context, roomID, displayName string) (*stor
 		return nil, err
 	}
 
-	nowMs := time.Now().UnixMilli()
+	nowMs := ctx.Now.UnixMilli()
 
 	pipe := s.rdb.Pipeline()
 	pipe.HSet(ctx, keyUsers(roomID), userID, nowMs)
 	pipe.HSet(ctx, keyUserMeta(roomID, userID),
-		"display_name", displayName,
+		"name", name,
 		"joined_at", nowMs,
 		"join_eid", 0, // placeholder; updated below
 	)
@@ -254,25 +263,37 @@ func (s *Store) JoinRoom(ctx context.Context, roomID, displayName string) (*stor
 }
 
 // SetUserLeft records the leave timestamp and appends a left system event.
-func (s *Store) SetUserLeft(ctx context.Context, roomID, userID string) error {
+// Returns the eid assigned to the left event, or 0 if the room has expired.
+func (s *Store) SetUserLeft(ctx appctx.AppCtx, roomID, userID string) (int64, error) {
 	meta, err := s.rdb.HGetAll(ctx, keyMeta(roomID)).Result()
 	if err != nil || len(meta) == 0 {
-		return nil // room may have expired; silently ignore
+		return 0, nil // room may have expired; silently ignore
 	}
 	expiresAtMs := parseInt64(meta["expires_at"])
 	maxEvents := int(parseInt64(meta["max_events"]))
 
-	nowMs := time.Now().UnixMilli()
+	nowMs := ctx.Now.UnixMilli()
 	if err := s.rdb.HSet(ctx, keyUserMeta(roomID, userID), "left_at", nowMs).Err(); err != nil {
-		return err
+		return 0, err
 	}
-	_, err = s.appendSystemEvent(ctx, roomID, "left", userID, expiresAtMs, maxEvents)
-	return err
+	return s.appendSystemEvent(ctx, roomID, "left", userID, expiresAtMs, maxEvents)
+}
+
+// GetUserJoinEid returns the join_eid for a user in a room.
+func (s *Store) GetUserJoinEid(ctx appctx.AppCtx, roomID, userID string) (int64, error) {
+	val, err := s.rdb.HGet(ctx, keyUserMeta(roomID, userID), "join_eid").Result()
+	if errors.Is(err, redis.Nil) {
+		return 0, ErrRoomNotFound
+	}
+	if err != nil {
+		return 0, err
+	}
+	return parseInt64(val), nil
 }
 
 // appendSystemEvent increments the event sequence, appends a system event JSON
 // to the sorted set, trims to maxEvents, and returns the assigned eid.
-func (s *Store) appendSystemEvent(ctx context.Context, roomID, eventType, userID string, expiresAtMs int64, maxEvents int) (int64, error) {
+func (s *Store) appendSystemEvent(ctx appctx.AppCtx, roomID, eventType, userID string, expiresAtMs int64, maxEvents int) (int64, error) {
 	eid, err := s.rdb.Incr(ctx, keyEventSeq(roomID)).Result()
 	if err != nil {
 		return 0, err
@@ -282,7 +303,7 @@ func (s *Store) appendSystemEvent(ctx context.Context, roomID, eventType, userID
 		"eid":  eid,
 		"type": eventType,
 		"uid":  userID,
-		"ts":   time.Now().UnixMilli(),
+		"ts":   ctx.Now.UnixMilli(),
 	}
 	data, err := json.Marshal(event)
 	if err != nil {
@@ -299,7 +320,7 @@ func (s *Store) appendSystemEvent(ctx context.Context, roomID, eventType, userID
 }
 
 // pexpireAllKeys sets absolute expiry on all room keys via PEXPIREAT.
-func (s *Store) pexpireAllKeys(ctx context.Context, roomID string, expiresAt time.Time) error {
+func (s *Store) pexpireAllKeys(ctx appctx.AppCtx, roomID string, expiresAt time.Time) error {
 	keys, err := s.rdb.SMembers(ctx, keyKeys(roomID)).Result()
 	if err != nil {
 		return err

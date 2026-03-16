@@ -11,7 +11,8 @@
       "Bash(firebase:*)",
       "Bash(grep:*)",
       "Bash(find:*)",
-      "Bash(go vet:*)"
+      "Bash(go vet:*)",
+      "Bash(pnpm tsc:*)"
     ]
   }
 }

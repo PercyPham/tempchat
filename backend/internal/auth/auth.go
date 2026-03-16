@@ -29,8 +29,9 @@ var (
 // Token format: base64url(claimsJSON).base64url(HMAC-SHA256-sig)
 // The signing input is the raw encoded claims string (the part before ".").
 // accessKey must be the raw HMAC key bytes stored at room creation.
+// now is the server's current time (captured at request receipt).
 // Returns ErrMalformed, ErrExpired, or ErrInvalidSignature on failure.
-func VerifyRoomAccessToken(token string, accessKey []byte) (*RoomAccessTokenClaims, error) {
+func VerifyRoomAccessToken(now time.Time, token string, accessKey []byte) (*RoomAccessTokenClaims, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 2 {
 		return nil, ErrMalformed
@@ -59,8 +60,8 @@ func VerifyRoomAccessToken(token string, accessKey []byte) (*RoomAccessTokenClai
 		return nil, ErrMalformed
 	}
 
-	now := time.Now().UnixMilli()
-	diff := claims.Ts - now
+	nowMs := now.UnixMilli()
+	diff := claims.Ts - nowMs
 	if diff < 0 {
 		diff = -diff
 	}

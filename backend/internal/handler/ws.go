@@ -7,6 +7,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
+	"github.com/percypham/tempchat/internal/appctx"
 	"github.com/percypham/tempchat/internal/auth"
 	"github.com/percypham/tempchat/internal/hub"
 	"github.com/percypham/tempchat/internal/middleware"
@@ -39,24 +40,15 @@ func WsHandler(s store.Store, h *hub.Hub) gin.HandlerFunc {
 			return
 		}
 
+		ctx := appctx.FromGin(c)
 		conn := hub.NewConn(ws)
 		h.Subscribe(roomID, conn)
 		defer func() {
 			h.Unsubscribe(roomID, conn)
 			conn.Close()
 			ws.CloseNow()
-			if userID != "" {
-				if err := s.SetUserLeft(c.Request.Context(), roomID, userID); err != nil {
-					log.Printf("ws: SetUserLeft error: %v", err)
-				}
-				_ = h.Publish(c.Request.Context(), roomID, gin.H{
-					"event": "user:left",
-					"uid":   userID,
-				})
-			}
 		}()
 
-		ctx := c.Request.Context()
 		for {
 			_, data, err := ws.Read(ctx)
 			if err != nil {
@@ -72,13 +64,13 @@ func WsHandler(s store.Store, h *hub.Hub) gin.HandlerFunc {
 				continue
 			}
 
-			event, err := s.AppendMessage(c.Request.Context(), roomID, userID, msg.M)
+			event, err := s.AppendMessage(ctx, roomID, userID, msg.M)
 			if err != nil {
 				log.Printf("ws: AppendMessage error: %v", err)
 				continue
 			}
 
-			_ = h.Publish(c.Request.Context(), roomID, gin.H{
+			_ = h.Publish(ctx, roomID, gin.H{
 				"event": "message:received",
 				"eid":   event.Eid,
 				"uid":   event.UID,
