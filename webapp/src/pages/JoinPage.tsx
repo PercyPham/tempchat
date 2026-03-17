@@ -157,6 +157,7 @@ export function JoinPage() {
             placeholder="e.g. Bob"
             maxLength={32}
             autoFocus
+            autoComplete="shouldnotautocomplete"
             className="w-full rounded-2xl px-4 py-3.5 text-warm-white placeholder-warm-white/20 text-sm focus:outline-none transition-all"
             style={{
               background: "rgba(28,35,51,0.6)",

@@ -6,10 +6,11 @@ interface Props {
   room: PersistedRoom;
   name: string | null;
   index: number;
+  hasNew?: boolean;
   onClick: () => void;
 }
 
-export function RoomCard({ room, name, index, onClick }: Props) {
+export function RoomCard({ room, name, index, hasNew, onClick }: Props) {
   const countdown = useCountdown(room.expiresAt);
   const initial = name ? name.charAt(0).toUpperCase() : "·";
 
@@ -45,6 +46,14 @@ export function RoomCard({ room, name, index, onClick }: Props) {
           </p>
           <CountdownBadge label={countdown.label} urgency={countdown.urgency} />
         </div>
+
+        {/* New message indicator */}
+        {hasNew && (
+          <div
+            className="flex-shrink-0 h-2.5 w-2.5 rounded-full"
+            style={{ background: "#F59E0B", boxShadow: "0 0 6px rgba(245,158,11,0.8)" }}
+          />
+        )}
 
         {/* Chevron */}
         <svg

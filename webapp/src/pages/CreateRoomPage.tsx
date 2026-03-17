@@ -4,10 +4,11 @@ import { hotelActions } from "../context/HotelContext";
 import { Spinner } from "../components/shared/Spinner";
 
 function InputField({
-  id, label, value, onChange, placeholder, maxLength,
+  id, label, value, onChange, placeholder, maxLength, autoComplete,
 }: {
   id: string; label: string; value: string;
   onChange: (v: string) => void; placeholder: string; maxLength: number;
+  autoComplete?: string;
 }) {
   return (
     <div className="group">
@@ -21,6 +22,7 @@ function InputField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         maxLength={maxLength}
+        autoComplete={autoComplete ?? "shouldnotautocomplete"}
         className="w-full rounded-2xl px-4 py-3.5 text-warm-white placeholder-warm-white/20 text-sm bg-transparent focus:outline-none transition-all"
         style={{
           background: "rgba(28,35,51,0.6)",

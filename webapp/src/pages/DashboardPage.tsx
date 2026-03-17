@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRooms } from "../hooks/useRooms";
+import { useNewMessages } from "../hooks/useNewMessages";
 import { hotel } from "../context/HotelContext";
 import { RoomCard } from "../components/dashboard/RoomCard";
 import { EmptyState } from "../components/dashboard/EmptyState";
@@ -10,6 +11,7 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const rooms = useRooms();
   const [names, setNames] = useState<Map<string, string>>(new Map());
+  const newMessages = useNewMessages(rooms);
 
   useEffect(() => {
     for (const room of rooms) {
@@ -62,6 +64,7 @@ export function DashboardPage() {
                 room={room}
                 name={names.get(room.roomId) ?? null}
                 index={i}
+                hasNew={newMessages.has(room.roomId)}
                 onClick={() => navigate(`/chat/${room.roomId}`)}
               />
             </div>

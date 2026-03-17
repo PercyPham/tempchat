@@ -59,11 +59,23 @@ export function useWebSocket({ roomId, onEvent }: UseWebSocketOptions): { send: 
 
     void connect();
 
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible' && wsRef.current === null) {
+        if (reconnectId !== null) {
+          clearTimeout(reconnectId);
+          reconnectId = null;
+        }
+        void connect();
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       cancelled = true;
       if (reconnectId !== null) clearTimeout(reconnectId);
       wsRef.current?.close();
       wsRef.current = null;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [roomId]);
 

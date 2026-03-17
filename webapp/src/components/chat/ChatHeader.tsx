@@ -1,15 +1,33 @@
 import { useNavigate } from "react-router-dom";
-import { CountdownBadge } from "../shared/CountdownBadge";
-import type { CountdownState } from "../../hooks/useCountdown";
+import type { CountdownState, Urgency } from "../../hooks/useCountdown";
+
+const boostPillStyle: Record<Urgency, React.CSSProperties> = {
+  healthy: {
+    background: "rgba(17,24,39,0.9)",
+    border: "1px solid rgba(245,158,11,0.2)",
+    color: "rgba(245,158,11,0.8)",
+  },
+  warning: {
+    background: "rgba(17,24,39,0.9)",
+    border: "1px solid rgba(251,146,60,0.35)",
+    color: "#FB923C",
+  },
+  urgent: {
+    background: "rgba(239,68,68,0.08)",
+    border: "1px solid rgba(239,68,68,0.4)",
+    color: "#EF4444",
+  },
+};
 
 interface Props {
   roomName: string;
   memberCount: number;
   countdown: CountdownState;
   onMenuOpen: () => void;
+  onBoost: () => void;
 }
 
-export function ChatHeader({ roomName, memberCount, countdown, onMenuOpen }: Props) {
+export function ChatHeader({ roomName, memberCount, countdown, onMenuOpen, onBoost }: Props) {
   const navigate = useNavigate();
 
   return (
@@ -38,7 +56,17 @@ export function ChatHeader({ roomName, memberCount, countdown, onMenuOpen }: Pro
         <div className="flex items-center gap-2">
           <span className="text-warm-white/30 text-xs">{memberCount} member{memberCount !== 1 ? "s" : ""}</span>
           <span className="text-warm-white/15 text-xs">·</span>
-          <CountdownBadge label={countdown.label} urgency={countdown.urgency} />
+          <button
+            onClick={onBoost}
+            title="Tap to boost room"
+            className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold transition-transform active:scale-95 ${countdown.urgency === "urgent" ? "animate-ember-pulse" : ""}`}
+            style={boostPillStyle[countdown.urgency]}
+          >
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z" />
+            </svg>
+            <span className="tabular-nums tracking-wide">{countdown.label}</span>
+          </button>
         </div>
       </div>
 

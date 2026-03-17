@@ -13,7 +13,9 @@
       "Bash(find:*)",
       "Bash(go vet:*)",
       "Bash(pnpm tsc:*)",
-      "Bash(pnpm exec:*)"
+      "Bash(pnpm exec:*)",
+      "Bash(make typecheck-wa:*)",
+      "Bash(make test-wa:*)"
     ]
   }
 }

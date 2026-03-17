@@ -1,21 +1,37 @@
+import type { RefObject } from "react";
 import type { PlainMessage } from "../../pages/ChatPage";
 
 interface Props {
   message: PlainMessage;
   senderName: string;
+  unreadRef?: RefObject<HTMLDivElement | null>;
 }
 
 function label(message: PlainMessage, senderName: string): string {
   switch (message.systemType) {
-    case "joined":  return `${senderName} joined`;
-    case "left":    return `${senderName} left`;
-    case "boosted": return `${senderName} boosted the room ⚡`;
-    default:        return "System event";
+    case "joined":       return `${senderName} joined`;
+    case "left":         return `${senderName} left`;
+    case "boosted":      return `${senderName} boosted the room ⚡`;
+    case "history_gap":  return `${message.gapCount ?? "Some"} messages are no longer available`;
+    default:             return "System event";
   }
 }
 
-export function SystemMessage({ message, senderName }: Props) {
+export function SystemMessage({ message, senderName, unreadRef }: Props) {
+  if (message.systemType === "unread_divider") {
+    return (
+      <div ref={unreadRef} className="flex items-center gap-3 py-1 animate-fade-in">
+        <div className="flex-1 h-px" style={{ background: "rgba(99,102,241,0.3)" }} />
+        <span className="text-[11px] tracking-wide" style={{ color: "rgba(99,102,241,0.7)" }}>
+          New Messages
+        </span>
+        <div className="flex-1 h-px" style={{ background: "rgba(99,102,241,0.3)" }} />
+      </div>
+    );
+  }
+
   const isBoosted = message.systemType === "boosted";
+  const isGap = message.systemType === "history_gap";
   return (
     <div className="flex justify-center py-1 animate-fade-in">
       <span
@@ -23,6 +39,8 @@ export function SystemMessage({ message, senderName }: Props) {
         style={
           isBoosted
             ? { background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", color: "rgba(245,158,11,0.7)" }
+            : isGap
+            ? { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "rgba(239,68,68,0.6)" }
             : { background: "rgba(255,255,255,0.04)", color: "rgba(249,250,251,0.3)" }
         }
       >
