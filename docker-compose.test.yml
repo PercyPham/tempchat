@@ -1,0 +1,8 @@
+name: tempchat-test
+
+services:
+  redis-test:
+    image: redis:8-alpine
+    ports:
+      - "6380:6379"
+    command: redis-server --notify-keyspace-events Ex

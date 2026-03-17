@@ -2,9 +2,9 @@
 
 ## **1. Authentication Header**
 
-All authenticated requests (REST and Socket.io) must include the `X-TempChat-Auth` header.
+All authenticated requests (REST and WebSocket) must include the `X-TempChat-Auth` header.
 
-**Format:** `Base64(Claims JSON).HMAC-SHA256-Hex(Base64(Claims JSON), roomAccessKey)`
+**Format:** `base64url(Claims JSON).base64url(HMAC-SHA256(base64url(Claims JSON), roomAccessKey))`
 
 **Claims Object:**
 
@@ -12,20 +12,21 @@ All authenticated requests (REST and Socket.io) must include the `X-TempChat-Aut
 {
   "rid": "room-uuid",
   "uid": "user-uuid", // Null for the initial 'join' request
-  "ts": 1715432000    // Unix timestamp (seconds)
+  "ts": 1715432000000 // Unix timestamp (milliseconds)
 }
 ```
 
-## **2. REST Endpoints (Express.js)**
+## **2. REST Endpoints (Go Gin)**
 
 ### **2.1 Create Room**
 
-- **Endpoint:** `POST /api/rooms`
+- **Endpoint:** `POST /v1/rooms`
 - **Payload:**
   ```
   {
-    "groupName": "Project X Sync",
-    "roomAccessKey": "pbkdf2_derived_rak_string"
+    "name": "<AES-GCM ciphertext (base64) of the room name>",
+    "accessKey": "pbkdf2_derived_rak_string",
+    "creatorName": "<AES-GCM ciphertext (base64) of the creator's display name>"
   }
   ```
 - **Response:** `201 Created`
@@ -33,63 +34,116 @@ All authenticated requests (REST and Socket.io) must include the `X-TempChat-Aut
   {
     "roomId": "...",
     "createdAt": 1715432000,
-    "expiresAt": 1715442800
+    "expiresAt": 1715442800,
+    "userId": "...",
+    "joinEid": 1
   }
   ```
 
 ### **2.2 Validate & Join Room**
 
-- **Endpoint:** `POST /api/rooms/:roomId/join`
+- **Endpoint:** `POST /v1/rooms/:roomId/join`
 - **Header:** Requires `X-TempChat-Auth` signed with `roomAccessKey`.
-- **Payload:** `{ "displayName": "Alice" }`
+- **Payload:** `{ "name": "<AES-GCM ciphertext (base64) of the display name>" }`
 - **Response:** `200 OK`
   ```
   {
     "userId": "user-uuid-xyz",
-    "lastMessageId": 142,
-    "group": {
-      "name": "Project X Sync",
+    "joinEid": 142,
+    "room": {
+      "name": "<AES-GCM ciphertext (base64) of the room name>",
       "expiresAt": 1715442800,
+      "memberCount": 2,
+      "maxParticipants": 5,
       "members": [
-        { "uid": "user-uuid-abc", "name": "Bob" },
-        { "uid": "user-uuid-xyz", "name": "Alice" }
+        { "uid": "user-uuid-abc", "name": "<AES-GCM ciphertext (base64) of display name>" },
+        { "uid": "user-uuid-xyz", "name": "<AES-GCM ciphertext (base64) of display name>" }
       ]
     }
   }
   ```
+- **Response:** `403 Forbidden` (room full)
+  ```
+  { "error": "room_full" }
+  ```
+  The client then calls `GET /v1/rooms/:roomId` and `GET /v1/boost-options` to determine whether boost purchase options should be shown.
 
-### **2.3 Fetch Group Info (Sync API)**
+### **2.3 Fetch Room Info (Sync API)**
 
-- **Endpoint:** `GET /api/rooms/:roomId`
+- **Endpoint:** `GET /v1/rooms/:roomId`
 - **Header:** Requires `X-TempChat-Auth`.
-- **Description:** Used to refresh the full state of the room (e.g., after detecting a message gap).
+- **Description:** Used to refresh the full state of the room (e.g., after detecting a message gap). Also used by non-members after a `room_full` rejection to check current capacity before deciding whether to boost.
+- **Note on `memberCount` vs `members`:** `memberCount` reflects all slots ever occupied (including users who have explicitly left), since slots are not reclaimed. `members` contains all users who have ever joined, including those who have left — departed members have a `leftAt` field set (Unix ms). This means `members.length === memberCount` and accurately reflects consumed capacity.
 - **Response:** `200 OK`
   ```
   {
-    "name": "Project X Sync",
+    "name": "<AES-GCM ciphertext (base64) of the room name>",
     "expiresAt": 1715442800,
+    "memberCount": 5,
+    "maxParticipants": 5,
+    "maxEvents": 50,
     "members": [
-      { "uid": "user-uuid-abc", "name": "Bob" },
-      { "uid": "user-uuid-xyz", "name": "Alice" }
+      { "uid": "user-uuid-abc", "name": "<AES-GCM ciphertext (base64) of display name>" },
+      { "uid": "user-uuid-xyz", "name": "<AES-GCM ciphertext (base64) of display name>" }
     ]
   }
   ```
 
-### **2.4 Fetch Message History**
+### **2.4 Leave Room**
 
-- **Endpoint:** `GET /api/rooms/:roomId/history?afterId=142`
-- **Header:** Requires `X-TempChat-Auth`.
-- **Params:** - `afterId` (Optional): Integer. Returns messages with `id > afterId`.
-- **Note on Buffer Miss:** Since Redis history is capped (e.g., last 50-100 messages), requested IDs older than the current buffer will not be returned. The client should gracefully handle gaps if the earliest returned ID is still greater than the expected `afterId`.
-- **Response:**
+- **Endpoint:** `DELETE /v1/rooms/:roomId/members/me`
+- **Header:** Requires `X-TempChat-Auth` with a non-null `uid`.
+- **Description:** Called when a user explicitly chooses "Leave & Delete Room". Records `left_at` for the caller, appends a `left` system event, and broadcasts `user:left` to all connected clients. The user's slot remains counted in `memberCount` permanently — slots are not reclaimed.
+- **Response:** `204 No Content`
+
+### **2.5 Fetch Boost Options**
+
+- **Endpoint:** `GET /v1/boost-options`
+- **Auth:** None required (public endpoint).
+- **Description:** Returns the current list of available boost options. Options are configured server-side and can change without a client update. The client uses this to render boost purchase cards and to determine (for non-members) whether any boost would raise the room's participant cap enough to allow entry.
+- **Response:** `200 OK`
   ```
   [
-    { "id": 143, "t": 1715435005, "m": "cipher_blob", "uid": "user-uuid-abc" },
-    { "id": 144, "t": 1715435010, "uid": "user-uuid-abc", "uname": "user-name-abc", "type": "user_joined" }
+    {
+      "id": "boost_abc123",
+      "name": "Plus Boost",
+      "ttlMs": 86400000,
+      "maxParticipants": 10,
+      "maxEvents": 100,
+      "price": "$2.99"
+    },
+    {
+      "id": "boost_def456",
+      "name": "Pro Boost",
+      "ttlMs": 604800000,
+      "maxParticipants": 50,
+      "maxEvents": 100,
+      "price": "$9.99"
+    }
   ]
   ```
 
-## **3. Real-Time Events (Socket.io)**
+### **2.6 Boost (Payment-Triggered)**
+
+Room boosts are applied via payment webhook callbacks (SePay / Paddle). The payment flow and webhook endpoint design are TBD. Once payment is confirmed, the server runs the atomic Lua boost script and broadcasts a `room:boosted` WebSocket event to all connected clients.
+
+Non-members boosting from the "Room Full" screen authenticate with `uid: null` (same pattern as the initial join request), using the `roomAccessKey` from the URL hash.
+
+### **2.7 Fetch Events**
+
+- **Endpoint:** `GET /v1/rooms/:roomId/events?afterEid=142`
+- **Header:** Requires `X-TempChat-Auth`.
+- **Params:** - `afterEid` (Optional): Integer. Returns events with `eid > afterEid`.
+- **Note on Buffer Miss:** Since the event log is capped (50 free / 100 plus / 100 pro), requested eids older than the current buffer will not be returned. The client should gracefully handle gaps if the earliest returned `eid` is still greater than the expected `afterEid`.
+- **Response:**
+  ```
+  [
+    { "eid": 143, "uid": "user-uuid-abc", "msg": "cipher_blob", "ts": 1715435005000 },
+    { "eid": 144, "type": "joined", "uid": "user-uuid-abc", "ts": 1715435010000 }
+  ]
+  ```
+
+## **3. Real-Time Events (WebSocket)**
 
 ### **3.1 Client -> Server**
 
@@ -99,14 +153,13 @@ All authenticated requests (REST and Socket.io) must include the `X-TempChat-Aut
 
 ### **3.2 Server -> Client**
 
-| **Event**         | **Payload**                                        | **Description**        |
-| ----------------- | -------------------------------------------------- | ---------------------- |
-| `message:receive` | `{ "id": 145, "t": ts, "m": "...", "uid": "..." }` | Standard chat message. |
+| **Event**         | **Payload**                                                                                                                                                      | **Description**                                                                                                                                 |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `message:received` | `{ "eid": 145, "uid": "...", "msg": "...", "ts": ts }`                                                                                                           | Standard chat message.                                                                                                                          |
+| `user:joined`     | `{ "eid": 146, "type": "joined", "uid": "...", "ts": ts }`                                                                                                       | User join system event.                                                                                                                         |
+| `user:left`       | `{ "eid": 147, "type": "left", "uid": "...", "ts": ts }`                                                                                                         | User leave system event.                                                                                                                        |
+| `room:boosted`    | `{ "eid": 148, "type": "boosted", "uid": "..." \| null, "boostId": "boost_abc123", "expiresAt": 1715529200, "maxParticipants": 50, "maxEvents": 100, "ts": ts }` | Broadcast when a paid boost is confirmed. `uid` is null if the booster was a non-member. Clients update their local room state and status pill. |
 
 ## **4. Storage Schemas (Redis)**
 
-| **Key**             | **Type** | **Fields / Structure**                                                                          |
-| ------------------- | -------- | ----------------------------------------------------------------------------------------------- |
-| `room:[id]:meta`    | Hash     | `rak`, `name`, `maxUsers`, `createdAt`, `expiresAt`, `msgCounter`                               |
-| `room:[id]:members` | Hash     | `uid` -> `JSON.stringify({name, lastMsgIdAtJoin})`                                              |
-| `room:[id]:history` | List     | JSON strings: `{"id": seq, "t": ts, "m": "...", "uid": "..."}`. System events include `"type"`. |
+See [redis_design.md](redis_design.md) for the full key schema.

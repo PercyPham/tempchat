@@ -1,0 +1,18 @@
+# Binaries
+bin/
+tmp/
+server
+
+# Environment
+.env
+.env.staging
+.env.production
+
+
+# Go test cache
+*.test
+!.env.test
+
+# Go workspace
+go.work
+go.work.sum
