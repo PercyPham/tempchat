@@ -16,7 +16,7 @@ A zero-knowledge, short-lived chat web application designed for immediate, real-
 - **QR-Based Entry:** Instant room joining via scanning.
 - **Room Identity:** Every room has an immutable **Room Name** set at creation.
 - **Zero-Knowledge Privacy:** The server facilitates and stores data but cannot read any of it. Messages, room names, and display names are all encrypted client-side; the server handles only opaque ciphertext.
-- **Automatic Self-Destruction:** Free rooms expire after 1 hour.
+- **Automatic Self-Destruction:** Clear room data after expiry.
 - **Persistence:** Encrypted messages are buffered in Redis; **late-joiners only see events generated after their specific join time.**
 - **Monetization:** Boosts are additive — each purchased boost extends the room's remaining time by the boost's duration and raises participant/event caps to the boost's maximum (taking the higher of current and new values). Any room member can purchase a boost. Non-members attempting to join a full room can also boost it to gain entry, if the available boosts would raise the participant cap above the current count. Boost options are configured server-side and can change over time. Rooms start as Free at creation. See §6 for default creation values.
 
@@ -64,7 +64,7 @@ To prevent replay attacks and unauthorized access, TempChat uses a signed-claim 
 ### **4.2 Backend (Go + Gin + coder/websocket)**
 
 - **Room Management:** Handles `roomId` generation and expiry logic.
-- **Boost Processing:** Applied via payment webhook (SePay / Paddle). Runs an atomic Lua script that updates `expires_at`, `max_participants`, and `max_events` in meta, appends a `boosted` system event to the event log, and re-expires all room keys using `PEXPIREAT`. Broadcasts a `room:boosted` WebSocket event to all connected clients.
+- **Boost Processing:** Applied via payment webhook (SePay / Paddle). Broadcasts a `room:boosted` WebSocket event to all connected clients. See [`redis_design.md` — Boost Strategy](redis_design.md#boost-strategy) for the atomic Lua implementation.
 - **Message Ordering:** Uses an atomic Redis `INCR` on `room:{roomId}:event_seq` to assign a monotonically increasing `eid` to every incoming verified event.
 - **Access Control:** Rejects join requests if the member registry is at capacity.
   - **Middleware:** Validates every incoming message/request by checking the `authToken` signature and timestamp window.
@@ -101,7 +101,7 @@ See [redis_design.md](redis_design.md) for the full key schema.
 | **Feature**         | **Free**             | **Plus Boost**       | **Pro Boost**        |
 | ------------------- | -------------------- | -------------------- | -------------------- |
 | **Participant Cap** | 5 **Total** Users    | 10 **Total** Users   | 50 **Total** Users   |
-| **Room Lifetime**   | 1 Hour               | 24 Hours             | 7 Days               |
+| **Room Lifetime**   | 3 Hours              | 24 Hours             | 7 Days               |
 | **Message Buffer**  | 50 Events            | 100 Events           | 100 Events           |
 | **Binary Sharing**  | P2P Only             | P2P Only             | P2P Only             |
 | **Room Name**       | Static (at creation) | Static (at creation) | Static (at creation) |

@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	freeTTL             = time.Hour
+	freeTTL             = 3 * time.Hour
 	freeMaxParticipants = 5
 	freeMaxEvents       = 50
 )

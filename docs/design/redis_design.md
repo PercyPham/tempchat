@@ -147,13 +147,9 @@ SADD room:{roomId}:keys "room:{roomId}:user:{userId}:meta"
 
 ## TTL Strategy
 
-| Tier | Room TTL          | Max Participants | Max Events |
-| ---- | ----------------- | ---------------- | ---------- |
-| Free | 1 hour (3600s)    | 5                | 50         |
-| Plus | 24 hours (86400s) | 10               | 100        |
-| Pro  | 7 days (604800s)  | 50               | 100        |
+Tier values (lifetime, participant cap, event cap) are defined in [`system_design.md §6`](system_design.md#6-business-logic--constraints).
 
-> At creation, `max_participants` / `max_events` / `expires_at` reflect the Free tier defaults above. Boost options are served dynamically from the backend and applied additively on top of the current state.
+At creation, `max_participants` / `max_events` / `expires_at` reflect the Free tier defaults. Boost options are served dynamically from the backend and applied additively on top of the current state.
 
 - All keys carry the **room TTL**.
 
