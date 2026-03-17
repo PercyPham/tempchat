@@ -99,7 +99,7 @@ This document defines the user journey and interface requirements for TempChat, 
 
 **Goal**: Immediate data destruction across the stack.
 
-1. **Auto-Resume**: Returning users are identified via `localStorage` keys for active rooms. Closing the app or navigating away only closes the WebSocket connection — it does not remove the user from the room. On next open, the user reconnects to their room using the saved `userId` and `roomAccessKey` from `localStorage`.
+1. **Auto-Resume**: Returning users are identified via `localStorage` keys for active rooms. Closing the app or navigating away only closes the WebSocket connection — it does not remove the user from the room. On next open, the user reconnects to their room using the saved `userId` and `privateKey` from `localStorage`.
 2. **Warning**: At T-minus 1 hour, a persistent banner appears: "Closing soon. This space and all data will be permanently deleted."
 3. **Post-Expiration**:
    - The server purges the Redis keys.

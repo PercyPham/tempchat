@@ -51,8 +51,8 @@ The **Web Crypto API** (built into all modern browsers) handles all cryptographi
 | Operation                              | API                   |
 | -------------------------------------- | --------------------- |
 | Message encryption / decryption        | `AES-GCM`             |
-| Deriving `roomAccessKey` from `secret` | `PBKDF2-HMAC-SHA-512` |
-| Signing `X-TempChat-Auth` header       | `HMAC-SHA-256`        |
+| Deriving AES-256 key from `privateKey` | `HKDF-SHA-384`        |
+| Signing `X-TempChat-Auth` header       | `ECDSA P-384`         |
 
 **Deploy:**
 

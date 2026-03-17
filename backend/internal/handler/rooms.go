@@ -2,7 +2,6 @@
 package handler
 
 import (
-	"encoding/base64"
 	"errors"
 	"net/http"
 
@@ -16,7 +15,7 @@ import (
 // createRoomBody is the request body for POST /v1/rooms.
 type createRoomBody struct {
 	Name        string `json:"name"        binding:"required"` // AES-GCM ciphertext (base64) of the room name
-	AccessKey   string `json:"accessKey"   binding:"required"` // base64url-encoded raw key bytes
+	PublicKey   string `json:"publicKey"   binding:"required"` // ECDSA P-384 public key as JWK JSON
 	CreatorName string `json:"creatorName" binding:"required"` // AES-GCM ciphertext (base64) of the creator's display name
 }
 
@@ -29,16 +28,10 @@ func CreateRoom(s store.Store) gin.HandlerFunc {
 			return
 		}
 
-		accessKey, err := base64.RawURLEncoding.DecodeString(body.AccessKey)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_access_key"})
-			return
-		}
-
 		ctx := appctx.FromGin(c)
 		result, err := s.CreateRoom(ctx, store.CreateRoomRequest{
 			Name:        body.Name,
-			AccessKey:   accessKey,
+			PublicKey:   body.PublicKey,
 			CreatorName: body.CreatorName,
 		})
 		if err != nil {

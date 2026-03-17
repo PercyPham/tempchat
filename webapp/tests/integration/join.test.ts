@@ -47,7 +47,7 @@ describe("Flow 10 — joinRoom auth rejection", () => {
     if (!reachable) return;
     const rs = await RoomService.create();
     const result = await rs.createRoom({ name: "Room", creatorName: "Alice" });
-    const token = await genAuthToken({ rid: "wrong-room-id", uid: null, ts: Date.now() }, rs.rak);
+    const token = await genAuthToken({ rid: "wrong-room-id", uid: null, ts: Date.now() }, rs.privateKey);
     await expect(
       joinRoom({ roomId: result.roomId, name: "Bob", token }),
     ).rejects.toMatchObject({
@@ -61,7 +61,7 @@ describe("Flow 10 — joinRoom auth rejection", () => {
     if (!reachable) return;
     const rs = await RoomService.create();
     const result = await rs.createRoom({ name: "Room", creatorName: "Alice" });
-    const token = await genAuthToken({ rid: result.roomId, uid: null, ts: Date.now() - 10000 }, rs.rak);
+    const token = await genAuthToken({ rid: result.roomId, uid: null, ts: Date.now() - 10000 }, rs.privateKey);
     await expect(
       joinRoom({ roomId: result.roomId, name: "Bob", token }),
     ).rejects.toMatchObject({
@@ -88,9 +88,9 @@ describe("Flow 11 — joinRoom validation errors", () => {
 describe("Flow 12 — joinRoom room_not_found", () => {
   it("non-existent roomId → 404 room_not_found", async () => {
     if (!reachable) return;
-    const { rak } = await createKeyMaterial();
+    const { privateKey } = await createKeyMaterial();
     const fakeRoomId = "nonexistent-room-id";
-    const token = await genAuthToken({ rid: fakeRoomId, uid: null, ts: Date.now() }, rak);
+    const token = await genAuthToken({ rid: fakeRoomId, uid: null, ts: Date.now() }, privateKey);
     const res = await fetch(`${API_URL}/v1/rooms/${fakeRoomId}/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-TempChat-Auth": token },

@@ -30,8 +30,8 @@ export const hotelActions = {
     return result;
   },
 
-  async joinRoom(secret: CryptoKey, roomId: string, params: { name: string }) {
-    const result = await hotel.joinRoom(secret, roomId, params);
+  async joinRoom(privateKey: CryptoKey, roomId: string, params: { name: string }) {
+    const result = await hotel.joinRoom(privateKey, roomId, params);
     dispatchChange();
     return result;
   },

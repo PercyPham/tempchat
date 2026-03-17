@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"log"
 	"net/http"
 
@@ -49,8 +48,8 @@ func main() {
 }
 
 type echoClaimsRequest struct {
-	RoomAccessKey   string `json:"accessKey" binding:"required"`
-	RoomAccessToken string `json:"token"     binding:"required"`
+	PublicKey string `json:"publicKey" binding:"required"`
+	Token     string `json:"token"     binding:"required"`
 }
 
 func echoClaimsHandler(c *gin.Context) {
@@ -60,13 +59,7 @@ func echoClaimsHandler(c *gin.Context) {
 		return
 	}
 
-	keyBytes, err := base64.RawURLEncoding.DecodeString(req.RoomAccessKey)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid accessKey encoding"})
-		return
-	}
-
-	claims, err := auth.VerifyRoomAccessToken(appctx.FromGin(c).Now, req.RoomAccessToken, keyBytes)
+	claims, err := auth.VerifyRoomAccessToken(appctx.FromGin(c).Now, req.Token, req.PublicKey)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return

@@ -4,7 +4,7 @@
 
 All authenticated requests (REST and WebSocket) must include the `X-TempChat-Auth` header.
 
-**Format:** `base64url(Claims JSON).base64url(HMAC-SHA256(base64url(Claims JSON), roomAccessKey))`
+**Format:** `base64url(Claims JSON).base64url(ECDSA-P384-Sign(base64url(Claims JSON), privateKey))`
 
 **Claims Object:**
 
@@ -25,7 +25,7 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
   ```
   {
     "name": "<AES-GCM ciphertext (base64) of the room name>",
-    "accessKey": "pbkdf2_derived_rak_string",
+    "publicKey": "<ECDSA P-384 public key as JWK JSON>",
     "creatorName": "<AES-GCM ciphertext (base64) of the creator's display name>"
   }
   ```
@@ -43,7 +43,7 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
 ### **2.2 Validate & Join Room**
 
 - **Endpoint:** `POST /v1/rooms/:roomId/join`
-- **Header:** Requires `X-TempChat-Auth` signed with `roomAccessKey`.
+- **Header:** Requires `X-TempChat-Auth` signed with `privateKey`.
 - **Payload:** `{ "name": "<AES-GCM ciphertext (base64) of the display name>" }`
 - **Response:** `200 OK`
   ```
@@ -127,7 +127,7 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
 
 Room boosts are applied via payment webhook callbacks (SePay / Paddle). The payment flow and webhook endpoint design are TBD. Once payment is confirmed, the server runs the atomic Lua boost script and broadcasts a `room:boosted` WebSocket event to all connected clients.
 
-Non-members boosting from the "Room Full" screen authenticate with `uid: null` (same pattern as the initial join request), using the `roomAccessKey` from the URL hash.
+Non-members boosting from the "Room Full" screen authenticate with `uid: null` (same pattern as the initial join request), using the `privateKey` from the URL hash.
 
 ### **2.7 Fetch Events**
 
@@ -160,6 +160,33 @@ Non-members boosting from the "Room Full" screen authenticate with `uid: null` (
 | `user:left`       | `{ "eid": 147, "type": "left", "uid": "...", "ts": ts }`                                                                                                         | User leave system event.                                                                                                                        |
 | `room:boosted`    | `{ "eid": 148, "type": "boosted", "uid": "..." \| null, "boostId": "boost_abc123", "expiresAt": 1715529200, "maxParticipants": 50, "maxEvents": 100, "ts": ts }` | Broadcast when a paid boost is confirmed. `uid` is null if the booster was a non-member. Clients update their local room state and status pill. |
 
-## **4. Storage Schemas (Redis)**
+## **4. Rate Limiting**
+
+All limits are enforced per client IP. REST limits use Redis-backed GCRA (atomic, shared across all server instances). WebSocket message limits are per-connection in-memory.
+
+On limit exceeded, REST endpoints return `429 Too Many Requests` with a `Retry-After` header (duration until the next token is available) and body `{ "error": "rate_limit_exceeded" }`. Redis errors fail open (request passes through).
+
+### **4.1 REST Rate Limits**
+
+| Endpoint | Redis key prefix | Rate | Burst | Period |
+|---|---|---|---|---|
+| `POST /v1/rooms` | `rl:create_room` | 5 | 3 | 10 min |
+| `GET /v1/boost-options` | `rl:boost_options` | 30 | 30 | 1 min |
+| `GET /v1/rooms/:roomId` | `rl:get_room` | 20 | 10 | 1 min |
+| `POST /v1/rooms/:roomId/join` | `rl:join` | 10 | 5 | 1 min |
+| `DELETE /v1/rooms/:roomId/members/me` | `rl:leave` | 5 | 3 | 1 min |
+| `GET /v1/rooms/:roomId/events` | `rl:events` | 20 | 10 | 1 min |
+| `GET /v1/rooms/:roomId/ws` (upgrade) | `rl:ws_upgrade` | 15 | 5 | 1 min |
+| `GET /health` | — | none | — | — |
+
+### **4.2 WebSocket Message Rate Limit**
+
+`message:send` frames are limited per connection (in-memory, no Redis): **1 message per 2 seconds, burst of 5**. Exceeding the limit sends an error frame and continues — the connection is not closed to avoid reconnect storms on mobile:
+
+```json
+{ "event": "error", "code": "rate_limit_exceeded" }
+```
+
+## **5. Storage Schemas (Redis)**
 
 See [redis_design.md](redis_design.md) for the full key schema.

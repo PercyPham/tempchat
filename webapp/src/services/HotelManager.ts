@@ -1,4 +1,3 @@
-import { rak2base64url } from "../lib/crypto";
 import { RoomService } from "./RoomService";
 import type { CreateRoomServiceResult, JoinRoomServiceResult } from "./RoomService";
 
@@ -7,8 +6,7 @@ export interface PersistedRoom {
   userId: string;
   expiresAt: number;   // unix ms — used to prune expired rooms on load
   joinEid: number;     // lower bound for event fetching
-  secretBytes: string; // base64url of AES-GCM key raw bytes
-  rakBytes: string;    // base64url of HMAC key raw bytes (cached — avoids re-running PBKDF2 600k iterations)
+  privateKeyJwk: string; // JWK JSON of ECDSA P-384 private key
 }
 
 const LS_PREFIX = "tc:room:";
@@ -52,10 +50,10 @@ export class HotelManager {
     return { session, result };
   }
 
-  // Join an existing room: secret comes from URL hash
-  // RoomService.fromSecret(secret) → rs.joinRoom() → persist → return rs
-  async joinRoom(secret: CryptoKey, roomId: string, params: { name: string }): Promise<{ session: RoomService; result: JoinRoomServiceResult }> {
-    const session = await RoomService.fromSecret(secret);
+  // Join an existing room: privateKey comes from URL hash
+  // RoomService.fromPrivateKey(privateKey) → rs.joinRoom() → persist → return rs
+  async joinRoom(privateKey: CryptoKey, roomId: string, params: { name: string }): Promise<{ session: RoomService; result: JoinRoomServiceResult }> {
+    const session = await RoomService.fromPrivateKey(privateKey);
     session.roomId = roomId;
     const result = await session.joinRoom(params);
     await this.persist(session, result.room.expiresAt, result.joinEid);
@@ -82,15 +80,13 @@ export class HotelManager {
   }
 
   private async persist(session: RoomService, expiresAt: number, joinEid: number): Promise<void> {
-    const secretBytes = await RoomService.exportSecret(session.secret);
-    const rakBytes = await rak2base64url(session.rak);
+    const privateKeyJwk = await RoomService.exportPrivateKey(session.privateKey);
     const data: PersistedRoom = {
       roomId: session.roomId!,
       userId: session.userId!,
       expiresAt,
       joinEid,
-      secretBytes,
-      rakBytes,
+      privateKeyJwk,
     };
     localStorage.setItem(`${LS_PREFIX}${session.roomId}`, JSON.stringify(data));
     this.sessions.set(session.roomId!, session);

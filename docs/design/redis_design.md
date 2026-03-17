@@ -22,7 +22,7 @@ Room configuration. Existence of this key is the source of truth for whether a r
 | Field              | Type         | Description                                                                     |
 | ------------------ | ------------ | ------------------------------------------------------------------------------- |
 | `name`             | string       | AES-GCM ciphertext (base64) of the room name; opaque to server, set at creation |
-| `access_key`       | string       | Hashed join token                                                               |
+| `public_key`       | string       | ECDSA P-384 public key (JWK JSON); used for auth token signature verification   |
 | `max_participants` | integer      | Participant cap. Updated (MAX logic) when a boost is applied.                   |
 | `max_events`       | integer      | Event cap. Updated (MAX logic) when a boost is applied.                         |
 | `created_at`       | integer (ms) | Unix timestamp of room creation                                                 |

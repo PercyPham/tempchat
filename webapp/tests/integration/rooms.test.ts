@@ -20,7 +20,7 @@ describe("Flow 4 — createRoom happy path", () => {
     expect(result.roomId).toMatch(/^[A-Za-z0-9_-]+$/);
     expect(result.userId).toMatch(/^[A-Za-z0-9_-]+$/);
     expect(result.joinEid).toBe(1);
-    expect(result.expiresAt - result.createdAt).toBeCloseTo(3_600_000, -3);
+    expect(result.expiresAt - result.createdAt).toBeCloseTo(10_800_000, -3);
     expect(Math.abs(result.createdAt - Date.now())).toBeLessThan(5000);
   });
 
@@ -38,16 +38,16 @@ describe("Flow 5 — createRoom validation errors", () => {
   // The service always encrypts, so they call lib/api directly to bypass encryption.
   it("empty name → 400 invalid_body", async () => {
     if (!reachable) return;
-    const { accessKey } = await createKeyMaterial();
-    await expect(createRoom({ name: "", accessKey, creatorName: "Alice" })).rejects.toMatchObject({
+    const { publicKeyJwk } = await createKeyMaterial();
+    await expect(createRoom({ name: "", publicKey: publicKeyJwk, creatorName: "Alice" })).rejects.toMatchObject({
       status: 400,
       message: "invalid_body",
     });
   });
 
-  it("empty accessKey → 400 invalid_body", async () => {
+  it("empty publicKey → 400 invalid_body", async () => {
     if (!reachable) return;
-    await expect(createRoom({ name: "Room", accessKey: "", creatorName: "Alice" })).rejects.toMatchObject({
+    await expect(createRoom({ name: "Room", publicKey: "", creatorName: "Alice" })).rejects.toMatchObject({
       status: 400,
       message: "invalid_body",
     });
@@ -55,29 +55,10 @@ describe("Flow 5 — createRoom validation errors", () => {
 
   it("empty creatorName → 400 invalid_body", async () => {
     if (!reachable) return;
-    const { accessKey } = await createKeyMaterial();
-    await expect(createRoom({ name: "Room", accessKey, creatorName: "" })).rejects.toMatchObject({
+    const { publicKeyJwk } = await createKeyMaterial();
+    await expect(createRoom({ name: "Room", publicKey: publicKeyJwk, creatorName: "" })).rejects.toMatchObject({
       status: 400,
       message: "invalid_body",
-    });
-  });
-
-  it("invalid base64url accessKey → 400 invalid_access_key", async () => {
-    if (!reachable) return;
-    await expect(
-      createRoom({ name: "Room", accessKey: "not-valid-base64!!!", creatorName: "Alice" }),
-    ).rejects.toMatchObject({
-      status: 400,
-      message: "invalid_access_key",
-    });
-  });
-
-  it("standard base64 accessKey (with +/=) → 400 invalid_access_key", async () => {
-    if (!reachable) return;
-    const stdB64 = btoa(String.fromCharCode(...new Uint8Array(32)));
-    await expect(createRoom({ name: "Room", accessKey: stdB64, creatorName: "Alice" })).rejects.toMatchObject({
-      status: 400,
-      message: "invalid_access_key",
     });
   });
 });
@@ -176,9 +157,9 @@ describe("Flow 8 — getRoom errors", () => {
 
   it("non-existent roomId → 404 room_not_found", async () => {
     if (!reachable) return;
-    const { rak } = await createKeyMaterial();
+    const { privateKey } = await createKeyMaterial();
     const fakeRoomId = "nonexistent-room-id";
-    const token = await genAuthToken({ rid: fakeRoomId, uid: null, ts: Date.now() }, rak);
+    const token = await genAuthToken({ rid: fakeRoomId, uid: null, ts: Date.now() }, privateKey);
     const res = await fetch(`${API_URL}/v1/rooms/${fakeRoomId}`, {
       headers: { "X-TempChat-Auth": token },
     });

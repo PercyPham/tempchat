@@ -13,7 +13,7 @@ import (
 type Store interface {
 	CreateRoom(ctx appctx.AppCtx, req CreateRoomRequest) (*CreateRoomResult, error)
 	GetRoom(ctx appctx.AppCtx, roomID string) (*Room, error)
-	GetRoomAccessKey(ctx appctx.AppCtx, roomID string) ([]byte, error)
+	GetRoomPublicKey(ctx appctx.AppCtx, roomID string) (string, error)
 	JoinRoom(ctx appctx.AppCtx, roomID, name string) (*JoinResult, error)
 	SetUserLeft(ctx appctx.AppCtx, roomID, userID string) (int64, error)
 	AppendMessage(ctx appctx.AppCtx, roomID, userID, ciphertext string) (*Event, error)
@@ -25,7 +25,7 @@ type Store interface {
 // CreateRoomRequest is the input for creating a new room.
 type CreateRoomRequest struct {
 	Name        string // AES-GCM ciphertext (base64) of the room name; opaque to server
-	AccessKey   []byte // raw HMAC key bytes derived client-side via PBKDF2
+	PublicKey   string // ECDSA P-384 public key as JWK JSON
 	CreatorName string // AES-GCM ciphertext (base64) of the creator's display name; opaque to server
 }
 

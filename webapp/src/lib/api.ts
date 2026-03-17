@@ -12,7 +12,7 @@ export class ApiError extends Error {
 
 export interface CreateRoomParams {
   name: string; // AES-GCM ciphertext (base64) of the plaintext room name
-  accessKey: string; // base64url-encoded raw HMAC key bytes (exported RAK)
+  publicKey: string; // ECDSA P-384 public key as JWK JSON
   creatorName: string; // AES-GCM ciphertext (base64) of the plaintext creator display name
 }
 

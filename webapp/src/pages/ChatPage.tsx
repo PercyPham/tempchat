@@ -4,7 +4,7 @@ import { hotel, hotelActions } from "../context/HotelContext";
 import { useCountdown } from "../hooks/useCountdown";
 import { useNotifications } from "../hooks/useNotifications";
 import { useWebSocket, type WSEventData } from "../hooks/useWebSocket";
-import { decryptMessage, encryptMessage } from "../lib/crypto";
+import { decrypt, encrypt } from "../lib/crypto";
 import { buildDisplayNames } from "../lib/names";
 import { getLastSeenEid, setLastSeenEid } from "../lib/lastSeen";
 import { ChatHeader } from "../components/chat/ChatHeader";
@@ -45,9 +45,15 @@ export function ChatPage() {
 
   // Redirect if no session
   useEffect(() => {
-    if (!roomId) { navigate("/", { replace: true }); return; }
+    if (!roomId) {
+      navigate("/", { replace: true });
+      return;
+    }
     const s = hotel.getSession(roomId);
-    if (!s) { navigate("/", { replace: true }); return; }
+    if (!s) {
+      navigate("/", { replace: true });
+      return;
+    }
     setSession(s);
   }, [roomId, navigate]);
 
@@ -60,16 +66,13 @@ export function ChatPage() {
 
     (async () => {
       try {
-        const [info, rawEvents] = await Promise.all([
-          session.getRoom(),
-          session.getEvents(joinEid),
-        ]);
+        const [info, rawEvents] = await Promise.all([session.getRoom(), session.getEvents(joinEid)]);
         setRoomInfo(info);
 
         const decrypted = await Promise.all(
           rawEvents.map(async (ev): Promise<PlainMessage> => {
             if (ev.msg) {
-              const text = await decryptMessage(ev.msg, session.secret).catch(() => "[encrypted]");
+              const text = await decrypt(ev.msg, session.aesKey).catch(() => "[encrypted]");
               return { eid: ev.eid, uid: ev.uid, ts: ev.ts, text };
             }
             return {
@@ -80,8 +83,7 @@ export function ChatPage() {
             };
           }),
         );
-        if (decrypted.length > 0)
-          maxEidRef.current = Math.max(...decrypted.map((m) => m.eid));
+        if (decrypted.length > 0) maxEidRef.current = Math.max(...decrypted.map((m) => m.eid));
 
         const lastSeen = roomId ? getLastSeenEid(roomId) : 0;
         const firstUnread = lastSeen > 0 ? decrypted.find((m) => m.eid > lastSeen) : undefined;
@@ -113,108 +115,109 @@ export function ChatPage() {
 
   // WS event handler — decrypt on receive, deduplicate by eid
   // Backend sends events with "event" key: "message:received", "user:joined", "user:left", "boosted"
-  const handleWsEvent = useCallback(async (raw: WSEventData) => {
-    if (!session) return;
-    const eid = raw.eid as number;
-    const uid = (raw.uid as string | null) ?? null;
-    const ts = raw.ts as number;
-    const evType = raw.event as string | undefined;
+  const handleWsEvent = useCallback(
+    async (raw: WSEventData) => {
+      if (!session) return;
+      const eid = raw.eid as number;
+      const uid = (raw.uid as string | null) ?? null;
+      const ts = raw.ts as number;
+      const evType = raw.event as string | undefined;
 
-    // Gap detection: if incoming eid is not immediately next, backfill missing events
-    if (maxEidRef.current > 0 && eid > maxEidRef.current + 1) {
-      try {
-        const rawMissed = await session.getEvents(maxEidRef.current);
-        const decryptedMissed = await Promise.all(
-          rawMissed.map(async (ev): Promise<PlainMessage> => {
-            if (ev.msg) {
-              const text = await decryptMessage(ev.msg, session.secret).catch(() => "[encrypted]");
-              return { eid: ev.eid, uid: ev.uid, ts: ev.ts, text };
+      // Gap detection: if incoming eid is not immediately next, backfill missing events
+      if (maxEidRef.current > 0 && eid > maxEidRef.current + 1) {
+        try {
+          const rawMissed = await session.getEvents(maxEidRef.current);
+          const decryptedMissed = await Promise.all(
+            rawMissed.map(async (ev): Promise<PlainMessage> => {
+              if (ev.msg) {
+                const text = await decrypt(ev.msg, session.aesKey).catch(() => "[encrypted]");
+                return { eid: ev.eid, uid: ev.uid, ts: ev.ts, text };
+              }
+              return { eid: ev.eid, uid: ev.uid, ts: ev.ts, systemType: ev.type as PlainMessage["systemType"] };
+            }),
+          );
+          setMessages((prev) => {
+            const existingEids = new Set(prev.map((m) => m.eid));
+            // Insert gap indicator if server has evicted events
+            const extra: PlainMessage[] = [];
+            if (rawMissed.length > 0 && rawMissed[0].eid > maxEidRef.current + 1) {
+              const gapCount = rawMissed[0].eid - maxEidRef.current - 1;
+              const gapEid = maxEidRef.current + 0.5;
+              if (!existingEids.has(gapEid)) {
+                extra.push({ eid: gapEid, uid: null, ts: 0, systemType: "history_gap", gapCount });
+              }
             }
-            return { eid: ev.eid, uid: ev.uid, ts: ev.ts, systemType: ev.type as PlainMessage["systemType"] };
-          }),
-        );
-        setMessages((prev) => {
-          const existingEids = new Set(prev.map((m) => m.eid));
-          // Insert gap indicator if server has evicted events
-          const extra: PlainMessage[] = [];
-          if (rawMissed.length > 0 && rawMissed[0].eid > maxEidRef.current + 1) {
-            const gapCount = rawMissed[0].eid - maxEidRef.current - 1;
-            const gapEid = maxEidRef.current + 0.5;
-            if (!existingEids.has(gapEid)) {
-              extra.push({ eid: gapEid, uid: null, ts: 0, systemType: "history_gap", gapCount });
-            }
+            const newOnes = decryptedMissed.filter((m) => !existingEids.has(m.eid));
+            if (extra.length === 0 && newOnes.length === 0) return prev;
+            return [...prev, ...extra, ...newOnes].sort((a, b) => a.eid - b.eid);
+          });
+          for (const m of decryptedMissed) {
+            if (m.eid > maxEidRef.current) maxEidRef.current = m.eid;
           }
-          const newOnes = decryptedMissed.filter((m) => !existingEids.has(m.eid));
-          if (extra.length === 0 && newOnes.length === 0) return prev;
-          return [...prev, ...extra, ...newOnes].sort((a, b) => a.eid - b.eid);
-        });
-        for (const m of decryptedMissed) {
-          if (m.eid > maxEidRef.current) maxEidRef.current = m.eid;
+        } catch {
+          // Best-effort; continue to process the current WS event
         }
-      } catch {
-        // Best-effort; continue to process the current WS event
       }
-    }
 
-    let msg: PlainMessage;
+      let msg: PlainMessage;
 
-    if (evType === "message:received" && raw.msg) {
-      const text = await decryptMessage(raw.msg as string, session.secret).catch(() => "[encrypted]");
-      if (uid !== session.userId) {
-        const senderName = memberNamesRef.current.get(uid ?? "") ?? "Someone";
-        notifyRef.current(senderName, text);
-      }
-      msg = { eid, uid, ts, text };
-    } else if (evType === "user:joined") {
-      const freshInfo = await session.getRoom().catch(() => null);
-      if (freshInfo) setRoomInfo(freshInfo);
-      msg = { eid, uid, ts, systemType: "joined" };
-    } else if (evType === "user:left") {
-      msg = { eid, uid, ts, systemType: "left" };
-      setRoomInfo((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          members: prev.members.map((m) =>
-            m.uid === uid ? { ...m, leftAt: ts } : m,
-          ),
+      if (evType === "message:received" && raw.msg) {
+        const text = await decrypt(raw.msg as string, session.aesKey).catch(() => "[encrypted]");
+        if (uid !== session.userId) {
+          const senderName = memberNamesRef.current.get(uid ?? "") ?? "Someone";
+          notifyRef.current(senderName, text);
+        }
+        msg = { eid, uid, ts, text };
+      } else if (evType === "user:joined") {
+        const freshInfo = await session.getRoom().catch(() => null);
+        if (freshInfo) setRoomInfo(freshInfo);
+        msg = { eid, uid, ts, systemType: "joined" };
+      } else if (evType === "user:left") {
+        msg = { eid, uid, ts, systemType: "left" };
+        setRoomInfo((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            members: prev.members.map((m) => (m.uid === uid ? { ...m, leftAt: ts } : m)),
+          };
+        });
+      } else if (evType === "boosted") {
+        msg = {
+          eid,
+          uid,
+          ts,
+          systemType: "boosted",
+          boostId: raw.boostId as string | undefined,
+          newExpiresAt: raw.expiresAt as number | undefined,
         };
-      });
-    } else if (evType === "boosted") {
-      msg = {
-        eid,
-        uid,
-        ts,
-        systemType: "boosted",
-        boostId: raw.boostId as string | undefined,
-        newExpiresAt: raw.expiresAt as number | undefined,
-      };
-      if (raw.expiresAt) {
-        setRoomInfo((prev) => prev ? { ...prev, expiresAt: raw.expiresAt as number } : prev);
+        if (raw.expiresAt) {
+          setRoomInfo((prev) => (prev ? { ...prev, expiresAt: raw.expiresAt as number } : prev));
+        }
+      } else {
+        return; // unknown event type
       }
-    } else {
-      return; // unknown event type
-    }
 
-    if (eid > maxEidRef.current) maxEidRef.current = eid;
-    setMessages((prev) => {
-      if (prev.some((m) => m.eid === eid)) return prev;
-      return [...prev, msg];
-    });
-  }, [session]);
+      if (eid > maxEidRef.current) maxEidRef.current = eid;
+      setMessages((prev) => {
+        if (prev.some((m) => m.eid === eid)) return prev;
+        return [...prev, msg];
+      });
+    },
+    [session],
+  );
 
   // Backfill missed events when returning to foreground
   useEffect(() => {
     if (!session || !roomId) return;
 
     async function handleVisibility() {
-      if (document.visibilityState !== 'visible' || !session) return;
+      if (document.visibilityState !== "visible" || !session) return;
       try {
         const rawEvents = await session.getEvents(maxEidRef.current);
         const decrypted = await Promise.all(
           rawEvents.map(async (ev): Promise<PlainMessage> => {
             if (ev.msg) {
-              const text = await decryptMessage(ev.msg, session.secret).catch(() => "[encrypted]");
+              const text = await decrypt(ev.msg, session.aesKey).catch(() => "[encrypted]");
               return { eid: ev.eid, uid: ev.uid, ts: ev.ts, text };
             }
             return { eid: ev.eid, uid: ev.uid, ts: ev.ts, systemType: ev.type as PlainMessage["systemType"] };
@@ -242,18 +245,20 @@ export function ChatPage() {
       }
     }
 
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [session, roomId]);
 
   const { send } = useWebSocket({
     roomId: roomId ?? "",
-    onEvent: (ev) => { void handleWsEvent(ev); },
+    onEvent: (ev) => {
+      void handleWsEvent(ev);
+    },
   });
 
   async function handleSend(text: string) {
     if (!session) return;
-    const encrypted = await encryptMessage(text, session.secret);
+    const encrypted = await encrypt(text, session.aesKey);
     send({ event: "message:send", m: encrypted });
   }
 
@@ -298,7 +303,11 @@ export function ChatPage() {
         firstUnreadEid={firstUnreadEid}
       />
 
-      <MessageInput onSend={(text) => { void handleSend(text); }} />
+      <MessageInput
+        onSend={(text) => {
+          void handleSend(text);
+        }}
+      />
 
       {roomInfo && (
         <RoomDetailDrawer

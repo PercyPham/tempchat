@@ -38,7 +38,7 @@ export function MessageBubble({ message, isSelf, senderName }: Props) {
               }
         }
       >
-        <p className="text-sm leading-relaxed break-words">{message.text}</p>
+        <p className="text-sm leading-relaxed wrap-break-word whitespace-pre-wrap">{message.text}</p>
       </div>
       <span className="text-[10px] text-warm-white/20 px-3">{formatTime(message.ts)}</span>
     </div>
