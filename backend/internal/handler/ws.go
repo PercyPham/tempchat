@@ -73,7 +73,8 @@ func WsHandler(s store.Store, h *hub.Hub) gin.HandlerFunc {
 				continue
 			}
 
-			if msg.Event != "message:send" || msg.M == "" || userID == "" {
+			const maxCiphertextBytes = 12_000 // ~2000 UTF-8 chars after AES-GCM + base64 overhead
+			if msg.Event != "message:send" || msg.M == "" || userID == "" || len(msg.M) > maxCiphertextBytes {
 				continue
 			}
 
