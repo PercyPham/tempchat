@@ -2,7 +2,6 @@ package redis
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -81,7 +80,7 @@ func (s *Store) CreateRoom(ctx appctx.AppCtx, req store.CreateRoomRequest) (*sto
 	// meta hash
 	pipe.HSet(ctx, keyMeta(roomID),
 		"name", req.Name,
-		"access_key", hex.EncodeToString(req.AccessKey),
+		"public_key", req.PublicKey,
 		"max_participants", freeMaxParticipants,
 		"max_events", freeMaxEvents,
 		"created_at", nowMs,
@@ -142,16 +141,16 @@ func (s *Store) CreateRoom(ctx appctx.AppCtx, req store.CreateRoomRequest) (*sto
 	}, nil
 }
 
-// GetRoomAccessKey fetches only the access_key field from room meta.
-func (s *Store) GetRoomAccessKey(ctx appctx.AppCtx, roomID string) ([]byte, error) {
-	val, err := s.rdb.HGet(ctx, keyMeta(roomID), "access_key").Result()
+// GetRoomPublicKey fetches only the public_key field from room meta.
+func (s *Store) GetRoomPublicKey(ctx appctx.AppCtx, roomID string) (string, error) {
+	val, err := s.rdb.HGet(ctx, keyMeta(roomID), "public_key").Result()
 	if errors.Is(err, redis.Nil) {
-		return nil, ErrRoomNotFound
+		return "", ErrRoomNotFound
 	}
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return hex.DecodeString(val)
+	return val, nil
 }
 
 // GetRoom reads the full room state including member list.

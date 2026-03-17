@@ -1,14 +1,15 @@
-import { generateSecret, deriveRak, rak2base64url } from "../lib/crypto";
+import { genAsymmetricKeyPair, deriveAES256FromPrivate, keyToString } from "../lib/crypto";
 
 export interface KeyMaterial {
-  secret: CryptoKey;
-  rak: CryptoKey;
-  accessKey: string; // base64url-encoded RAK
+  privateKey: CryptoKey;
+  publicKey: CryptoKey;
+  aesKey: CryptoKey;
+  publicKeyJwk: string;
 }
 
 export async function createKeyMaterial(): Promise<KeyMaterial> {
-  const secret = await generateSecret();
-  const rak = await deriveRak(secret);
-  const accessKey = await rak2base64url(rak);
-  return { secret, rak, accessKey };
+  const { privateKey, publicKey } = await genAsymmetricKeyPair();
+  const aesKey = await deriveAES256FromPrivate(privateKey);
+  const publicKeyJwk = await keyToString(publicKey);
+  return { privateKey, publicKey, aesKey, publicKeyJwk };
 }

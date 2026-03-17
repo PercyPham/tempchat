@@ -15,8 +15,8 @@ export function InvitePage() {
     if (!roomId) return;
     const session = hotel.getSession(roomId);
     if (!session) { navigate("/", { replace: true }); return; }
-    RoomService.exportSecret(session.secret).then((secretB64url) => {
-      setInviteUrl(`${window.location.origin}/join/${roomId}#${secretB64url}`);
+    RoomService.exportPrivateKey(session.privateKey).then((privateKeyJwk) => {
+      setInviteUrl(`${window.location.origin}/join/${roomId}#key=${encodeURIComponent(privateKeyJwk)}`);
     });
   }, [roomId, navigate]);
 

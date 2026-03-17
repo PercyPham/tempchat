@@ -13,11 +13,11 @@ beforeAll(async () => {
 });
 
 // Test-only helper: calls the echo-claims endpoint directly (used by Flows 1-3)
-async function echoClaims(accessKey: string, token: string) {
+async function echoClaims(publicKey: string, token: string) {
   return fetch(`${API_URL}/v1/test/echo-claims`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ accessKey, token }),
+    body: JSON.stringify({ publicKey, token }),
   });
 }
 
@@ -25,11 +25,11 @@ describe("Flow 1 — valid token round-trip", () => {
   it("server returns parsed claims matching what client signed", async () => {
     if (!reachable) return;
 
-    const { rak, accessKey } = await createKeyMaterial();
+    const { privateKey, publicKeyJwk } = await createKeyMaterial();
     const ts = Date.now();
-    const token = await genAuthToken({ rid: "test-room", uid: "test-user", ts }, rak);
+    const token = await genAuthToken({ rid: "test-room", uid: "test-user", ts }, privateKey);
 
-    const res = await echoClaims(accessKey, token);
+    const res = await echoClaims(publicKeyJwk, token);
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -43,47 +43,47 @@ describe("Flow 2 — auth rejection cases", () => {
   // These tests craft deliberately bad tokens (custom ts), so they use genAuthToken directly.
   it("expired token (ts = now - 10) → 401", async () => {
     if (!reachable) return;
-    const { rak, accessKey } = await createKeyMaterial();
+    const { privateKey, publicKeyJwk } = await createKeyMaterial();
     const ts = Date.now() - 10000;
-    const token = await genAuthToken({ rid: "r", uid: "u", ts }, rak);
-    const res = await echoClaims(accessKey, token);
+    const token = await genAuthToken({ rid: "r", uid: "u", ts }, privateKey);
+    const res = await echoClaims(publicKeyJwk, token);
     expect(res.status).toBe(401);
   });
 
   it("future token (ts = now + 10) → 401", async () => {
     if (!reachable) return;
-    const { rak, accessKey } = await createKeyMaterial();
+    const { privateKey, publicKeyJwk } = await createKeyMaterial();
     const ts = Date.now() + 10000;
-    const token = await genAuthToken({ rid: "r", uid: "u", ts }, rak);
-    const res = await echoClaims(accessKey, token);
+    const token = await genAuthToken({ rid: "r", uid: "u", ts }, privateKey);
+    const res = await echoClaims(publicKeyJwk, token);
     expect(res.status).toBe(401);
   });
 
   it("tampered signature → 401", async () => {
     if (!reachable) return;
-    const { rak, accessKey } = await createKeyMaterial();
+    const { privateKey, publicKeyJwk } = await createKeyMaterial();
     const ts = Date.now();
-    const token = await genAuthToken({ rid: "r", uid: "u", ts }, rak);
+    const token = await genAuthToken({ rid: "r", uid: "u", ts }, privateKey);
     const [claims, sig] = token.split(".");
     const tampered = `${claims}.${sig.slice(0, -3)}XXX`;
-    const res = await echoClaims(accessKey, tampered);
+    const res = await echoClaims(publicKeyJwk, tampered);
     expect(res.status).toBe(401);
   });
 
   it("malformed token (no dot) → 401", async () => {
     if (!reachable) return;
-    const { accessKey } = await createKeyMaterial();
-    const res = await echoClaims(accessKey, "nodottoken");
+    const { publicKeyJwk } = await createKeyMaterial();
+    const res = await echoClaims(publicKeyJwk, "nodottoken");
     expect(res.status).toBe(401);
   });
 
   it("empty token → 400 (binding failure)", async () => {
     if (!reachable) return;
-    const { accessKey } = await createKeyMaterial();
+    const { publicKeyJwk } = await createKeyMaterial();
     const res = await fetch(`${API_URL}/v1/test/echo-claims`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessKey, token: "" }),
+      body: JSON.stringify({ publicKey: publicKeyJwk, token: "" }),
     });
     expect(res.status).toBe(400);
   });
@@ -92,11 +92,11 @@ describe("Flow 2 — auth rejection cases", () => {
 describe("Flow 3 — uid: null join token", () => {
   it("server parses uid as null", async () => {
     if (!reachable) return;
-    const { rak, accessKey } = await createKeyMaterial();
+    const { privateKey, publicKeyJwk } = await createKeyMaterial();
     const ts = Date.now();
-    const token = await genAuthToken({ rid: "test-room", uid: null, ts }, rak);
+    const token = await genAuthToken({ rid: "test-room", uid: null, ts }, privateKey);
 
-    const res = await echoClaims(accessKey, token);
+    const res = await echoClaims(publicKeyJwk, token);
     expect(res.status).toBe(200);
 
     const body = await res.json();

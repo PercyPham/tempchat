@@ -4,7 +4,7 @@
 
 All authenticated requests (REST and WebSocket) must include the `X-TempChat-Auth` header.
 
-**Format:** `base64url(Claims JSON).base64url(HMAC-SHA256(base64url(Claims JSON), roomAccessKey))`
+**Format:** `base64url(Claims JSON).base64url(ECDSA-P384-Sign(base64url(Claims JSON), privateKey))`
 
 **Claims Object:**
 
@@ -25,7 +25,7 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
   ```
   {
     "name": "<AES-GCM ciphertext (base64) of the room name>",
-    "accessKey": "pbkdf2_derived_rak_string",
+    "publicKey": "<ECDSA P-384 public key as JWK JSON>",
     "creatorName": "<AES-GCM ciphertext (base64) of the creator's display name>"
   }
   ```
@@ -43,7 +43,7 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
 ### **2.2 Validate & Join Room**
 
 - **Endpoint:** `POST /v1/rooms/:roomId/join`
-- **Header:** Requires `X-TempChat-Auth` signed with `roomAccessKey`.
+- **Header:** Requires `X-TempChat-Auth` signed with `privateKey`.
 - **Payload:** `{ "name": "<AES-GCM ciphertext (base64) of the display name>" }`
 - **Response:** `200 OK`
   ```
@@ -127,7 +127,7 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
 
 Room boosts are applied via payment webhook callbacks (SePay / Paddle). The payment flow and webhook endpoint design are TBD. Once payment is confirmed, the server runs the atomic Lua boost script and broadcasts a `room:boosted` WebSocket event to all connected clients.
 
-Non-members boosting from the "Room Full" screen authenticate with `uid: null` (same pattern as the initial join request), using the `roomAccessKey` from the URL hash.
+Non-members boosting from the "Room Full" screen authenticate with `uid: null` (same pattern as the initial join request), using the `privateKey` from the URL hash.
 
 ### **2.7 Fetch Events**
 

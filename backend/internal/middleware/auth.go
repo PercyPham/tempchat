@@ -32,7 +32,7 @@ func RequireAuth(s store.Store) gin.HandlerFunc {
 
 		ctx := appctx.FromGin(c)
 		roomID := c.Param("roomId")
-		accessKey, err := s.GetRoomAccessKey(ctx, roomID)
+		publicKey, err := s.GetRoomPublicKey(ctx, roomID)
 		if err != nil {
 			if errors.Is(err, storeredis.ErrRoomNotFound) {
 				c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "room_not_found"})
@@ -42,7 +42,7 @@ func RequireAuth(s store.Store) gin.HandlerFunc {
 			return
 		}
 
-		claims, err := auth.VerifyRoomAccessToken(ctx.Now, token, accessKey)
+		claims, err := auth.VerifyRoomAccessToken(ctx.Now, token, publicKey)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid_auth"})
 			return

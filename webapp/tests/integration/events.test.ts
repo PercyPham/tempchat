@@ -94,9 +94,9 @@ describe("Flow 15 — getEvents errors", () => {
 
   it("non-existent roomId → 404 room_not_found", async () => {
     if (!reachable) return;
-    const { rak } = await createKeyMaterial();
+    const { privateKey } = await createKeyMaterial();
     const fakeRoomId = "nonexistent-room-id";
-    const token = await genAuthToken({ rid: fakeRoomId, uid: null, ts: Date.now() }, rak);
+    const token = await genAuthToken({ rid: fakeRoomId, uid: null, ts: Date.now() }, privateKey);
     const res = await fetch(`${API_URL}/v1/rooms/${fakeRoomId}/events`, {
       headers: { "X-TempChat-Auth": token },
     });

@@ -29,20 +29,21 @@ export function JoinPage() {
       return;
     }
 
-    const secretB64url = window.location.hash.slice(1);
-    if (!secretB64url) {
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const privateKeyJwk = hashParams.get("key");
+    if (!privateKeyJwk) {
       setPhase("error");
       setErrorMsg("Invalid invite link — no encryption key found in URL.");
       return;
     }
 
-    RoomService.importSecret(secretB64url)
+    RoomService.importPrivateKey(privateKeyJwk)
       .then(async (key) => {
         // Clear hash now that we've read it — key is no longer needed in the URL
         history.replaceState(null, "", window.location.pathname);
         setSecret(key);
         // Pre-check room capacity before showing name input
-        const rs = await RoomService.fromSecret(key);
+        const rs = await RoomService.fromPrivateKey(key);
         rs.roomId = roomId;
         const room = await rs.getRoom();
         setRoomMaxParticipants(room.maxParticipants);
@@ -66,7 +67,7 @@ export function JoinPage() {
       if (err instanceof ApiError && err.code === "room_full") {
         // Race condition — room filled between pre-check and join; re-fetch room info
         try {
-          const rs = await RoomService.fromSecret(secret);
+          const rs = await RoomService.fromPrivateKey(secret);
           rs.roomId = roomId;
           const room = await rs.getRoom();
           setRoomMaxParticipants(room.maxParticipants);
