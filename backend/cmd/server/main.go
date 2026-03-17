@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis_rate/v10"
 	"github.com/joho/godotenv"
 	"github.com/percypham/tempchat/internal/cleanup"
 	"github.com/percypham/tempchat/internal/common/config"
@@ -29,6 +30,7 @@ func main() {
 	rdb := storeredis.NewClient(config.Redis().Addr)
 	s := storeredis.New(rdb)
 	h := hub.New(rdb)
+	rl := redis_rate.NewLimiter(rdb)
 
 	r := gin.Default()
 	r.Use(corsMiddleware(config.App().AllowedOrigins))
@@ -39,16 +41,37 @@ func main() {
 	})
 
 	// Public endpoints
-	v1.POST("/rooms", handler.CreateRoom(s))
-	v1.GET("/boost-options", handler.GetBoostOptions())
+	v1.POST("/rooms",
+		middleware.IPRateLimit(rl, "rl:create_room", redis_rate.Limit{Rate: 5, Burst: 3, Period: 10 * time.Minute}),
+		handler.CreateRoom(s),
+	)
+	v1.GET("/boost-options",
+		middleware.IPRateLimit(rl, "rl:boost_options", redis_rate.Limit{Rate: 30, Burst: 30, Period: time.Minute}),
+		handler.GetBoostOptions(),
+	)
 
 	// Auth-gated endpoints
 	authed := v1.Group("", middleware.RequireAuth(s))
-	authed.GET("/rooms/:roomId", handler.GetRoom(s))
-	authed.POST("/rooms/:roomId/join", handler.JoinRoom(s, h))
-	authed.DELETE("/rooms/:roomId/members/me", handler.LeaveRoom(s, h))
-	authed.GET("/rooms/:roomId/events", handler.GetEvents(s))
-	authed.GET("/rooms/:roomId/ws", handler.WsHandler(s, h))
+	authed.GET("/rooms/:roomId",
+		middleware.IPRateLimit(rl, "rl:get_room", redis_rate.Limit{Rate: 20, Burst: 10, Period: time.Minute}),
+		handler.GetRoom(s),
+	)
+	authed.POST("/rooms/:roomId/join",
+		middleware.IPRateLimit(rl, "rl:join", redis_rate.Limit{Rate: 10, Burst: 5, Period: time.Minute}),
+		handler.JoinRoom(s, h),
+	)
+	authed.DELETE("/rooms/:roomId/members/me",
+		middleware.IPRateLimit(rl, "rl:leave", redis_rate.Limit{Rate: 5, Burst: 3, Period: time.Minute}),
+		handler.LeaveRoom(s, h),
+	)
+	authed.GET("/rooms/:roomId/events",
+		middleware.IPRateLimit(rl, "rl:events", redis_rate.Limit{Rate: 20, Burst: 10, Period: time.Minute}),
+		handler.GetEvents(s),
+	)
+	authed.GET("/rooms/:roomId/ws",
+		middleware.IPRateLimit(rl, "rl:ws_upgrade", redis_rate.Limit{Rate: 15, Burst: 5, Period: time.Minute}),
+		handler.WsHandler(s, h),
+	)
 
 	workerCtx, cancelWorkers := context.WithCancel(context.Background())
 	defer cancelWorkers()

@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
@@ -14,6 +15,7 @@ import (
 	"github.com/percypham/tempchat/internal/hub"
 	"github.com/percypham/tempchat/internal/middleware"
 	"github.com/percypham/tempchat/internal/store"
+	"golang.org/x/time/rate"
 )
 
 // wsMessage is the shape of a client-sent WebSocket frame.
@@ -62,6 +64,8 @@ func WsHandler(s store.Store, h *hub.Hub) gin.HandlerFunc {
 			ws.CloseNow()
 		}()
 
+		msgLimiter := rate.NewLimiter(rate.Every(2*time.Second), 5)
+
 		for {
 			_, data, err := ws.Read(ctx)
 			if err != nil {
@@ -75,6 +79,12 @@ func WsHandler(s store.Store, h *hub.Hub) gin.HandlerFunc {
 
 			const maxCiphertextBytes = 12_000 // ~2000 UTF-8 chars after AES-GCM + base64 overhead
 			if msg.Event != "message:send" || msg.M == "" || userID == "" || len(msg.M) > maxCiphertextBytes {
+				continue
+			}
+
+			if !msgLimiter.Allow() {
+				errPayload, _ := json.Marshal(gin.H{"event": "error", "code": "rate_limit_exceeded"})
+				_ = ws.Write(ctx, websocket.MessageText, errPayload)
 				continue
 			}
 
