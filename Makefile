@@ -58,8 +58,8 @@ test-wa:      ## Run webapp crypto unit tests (no infra needed)
 	cd webapp && pnpm exec vitest run src/lib/crypto.test.ts
 
 test-integration: ## Run webapp integration tests (starts Redis + two test server instances on :8081 and :8082)
-	@echo "Ensuring Redis is running..."
-	docker compose -f docker-compose.dev.yml up -d redis
+	@echo "Ensuring test Redis is running..."
+	docker compose -f $(CURDIR)/docker-compose.test.yml up -d
 	@echo "Starting test server instances on :8081 and :8082..."
 	@lsof -ti :8081 | xargs kill 2>/dev/null; true
 	@lsof -ti :8082 | xargs kill 2>/dev/null; true
@@ -75,6 +75,7 @@ test-integration: ## Run webapp integration tests (starts Redis + two test serve
 	  STATUS=$$?; \
 	  lsof -ti :8081 | xargs kill 2>/dev/null; \
 	  lsof -ti :8082 | xargs kill 2>/dev/null; \
+	  docker compose -f $(CURDIR)/docker-compose.test.yml down; \
 	  exit $$STATUS
 
 # ── Typecheck ─────────────────────────────────────────────────────────────────

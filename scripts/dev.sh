@@ -17,7 +17,9 @@ PIDS=()
 cleanup() {
   log "Shutting down…"
   for pid in "${PIDS[@]}"; do
-    kill "$pid" 2>/dev/null || true
+    kill -TERM "$pid" 2>/dev/null || true
+    # Kill any children (e.g. air's compiled binary child process)
+    pkill -TERM -P "$pid" 2>/dev/null || true
   done
   wait 2>/dev/null || true
 }
@@ -44,12 +46,12 @@ stream_prefix() {
 # ── 3. Backend ───────────────────────────────────────────────────────────────
 log "Starting backend…"
 stream_prefix "$GREEN" "[backend]" \
-  bash -c "cd '$ROOT/backend' && $(go env GOPATH)/bin/air"
+  bash -c "cd '$ROOT/backend' && exec $(go env GOPATH)/bin/air"
 
 # ── 4. Webapp ────────────────────────────────────────────────────────────────
 log "Starting webapp…"
 stream_prefix "$YELLOW" "[webapp]" \
-  bash -c "cd '$ROOT/webapp' && pnpm dev"
+  bash -c "cd '$ROOT/webapp' && exec pnpm dev"
 
 log "All services started. Press Ctrl+C to stop."
 wait

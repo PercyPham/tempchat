@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	storeredis "github.com/percypham/tempchat/internal/store/redis"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -42,7 +43,7 @@ func TestHandleExpiry_IgnoresNonMetaKeys(t *testing.T) {
 	t.Cleanup(func() { rdb.Del(ctx, usersKey, keysKey) })
 
 	// Feed the users key (not :meta) — worker should ignore it
-	handleExpiry(ctx, rdb, usersKey)
+	handleExpiry(ctx, storeredis.New(rdb), usersKey)
 
 	n, err := rdb.Exists(ctx, usersKey).Result()
 	if err != nil {
@@ -74,7 +75,7 @@ func TestHandleExpiry_DeletesRoomKeys(t *testing.T) {
 		t.Fatalf("SAdd: %v", err)
 	}
 
-	handleExpiry(ctx, rdb, "room:"+roomID+":meta")
+	handleExpiry(ctx, storeredis.New(rdb), "room:"+roomID+":meta")
 
 	for _, k := range []string{key1, key2, keysKey} {
 		n, err := rdb.Exists(ctx, k).Result()
@@ -95,5 +96,5 @@ func TestHandleExpiry_NoopWhenKeysSetMissing(t *testing.T) {
 
 	roomID := uniqueRoom("noop")
 	// No keys set registered — should return cleanly
-	handleExpiry(ctx, rdb, "room:"+roomID+":meta")
+	handleExpiry(ctx, storeredis.New(rdb), "room:"+roomID+":meta")
 }

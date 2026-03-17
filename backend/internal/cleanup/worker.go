@@ -7,13 +7,14 @@ import (
 	"log"
 	"strings"
 
+	"github.com/percypham/tempchat/internal/store"
 	"github.com/redis/go-redis/v9"
 )
 
 // Run subscribes to Redis keyspace expiry notifications and deletes all keys
 // associated with a room when its meta key expires. It blocks until ctx is
 // cancelled.
-func Run(ctx context.Context, rdb *redis.Client) {
+func Run(ctx context.Context, rdb *redis.Client, s store.Store) {
 	sub := rdb.Subscribe(ctx, "__keyevent@0__:expired")
 	defer sub.Close()
 
@@ -26,12 +27,12 @@ func Run(ctx context.Context, rdb *redis.Client) {
 			if !ok {
 				return
 			}
-			handleExpiry(ctx, rdb, msg.Payload)
+			handleExpiry(ctx, s, msg.Payload)
 		}
 	}
 }
 
-func handleExpiry(ctx context.Context, rdb *redis.Client, key string) {
+func handleExpiry(ctx context.Context, s store.Store, key string) {
 	if !strings.HasPrefix(key, "room:") || !strings.HasSuffix(key, ":meta") {
 		return
 	}
@@ -41,19 +42,7 @@ func handleExpiry(ctx context.Context, rdb *redis.Client, key string) {
 		return
 	}
 	roomID := parts[1]
-	keysKey := "room:" + roomID + ":keys"
-
-	members, err := rdb.SMembers(ctx, keysKey).Result()
-	if err != nil || len(members) == 0 {
-		return
-	}
-
-	pipe := rdb.Pipeline()
-	for _, k := range members {
-		pipe.Del(ctx, k)
-	}
-	pipe.Del(ctx, keysKey)
-	if _, err := pipe.Exec(ctx); err != nil {
+	if err := s.DeleteRoom(ctx, roomID); err != nil {
 		log.Printf("cleanup: failed to delete room %s keys: %v", roomID, err)
 	}
 }

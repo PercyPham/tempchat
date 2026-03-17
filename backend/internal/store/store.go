@@ -3,7 +3,11 @@
 // for payment records) can implement this interface independently.
 package store
 
-import "github.com/percypham/tempchat/internal/appctx"
+import (
+	"context"
+
+	"github.com/percypham/tempchat/internal/appctx"
+)
 
 // Store is the primary storage interface for room and event operations.
 type Store interface {
@@ -15,6 +19,7 @@ type Store interface {
 	AppendMessage(ctx appctx.AppCtx, roomID, userID, ciphertext string) (*Event, error)
 	GetEvents(ctx appctx.AppCtx, roomID string, afterEid int64) ([]Event, error)
 	GetUserJoinEid(ctx appctx.AppCtx, roomID, userID string) (int64, error)
+	DeleteRoom(ctx context.Context, roomID string) error
 }
 
 // CreateRoomRequest is the input for creating a new room.

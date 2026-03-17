@@ -112,3 +112,32 @@ export async function joinRoom(params: JoinRoomParams): Promise<JoinRoomResult> 
   }
   return res.json();
 }
+
+export async function leaveRoom(roomId: string, token: string): Promise<void> {
+  const res = await fetch(`${API_URL}/v1/rooms/${roomId}/members/me`, {
+    method: "DELETE",
+    headers: { "X-TempChat-Auth": token },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "unknown" }));
+    throw new ApiError(res.status, body.error ?? "unknown");
+  }
+}
+
+export interface BoostOption {
+  id: string;
+  name: string;
+  price: string;
+  ttlMs: number;
+  maxParticipants: number;
+  maxEvents: number;
+}
+
+export async function getBoostOptions(): Promise<BoostOption[]> {
+  const res = await fetch(`${API_URL}/v1/boost-options`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "unknown" }));
+    throw new ApiError(res.status, body.error ?? "unknown");
+  }
+  return res.json();
+}

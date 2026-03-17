@@ -182,7 +182,7 @@ Enable keyspace notifications in Redis config:
 notify-keyspace-events Ex
 ```
 
-Listen for `expired` events on `room:{roomId}:meta`. When fired, the cleanup worker:
+Listen for `expired` events on `room:{roomId}:meta`. When fired, the cleanup worker calls `DeleteRoom`, which:
 
 1. Reads all members of `room:{roomId}:keys`
 2. Issues a pipelined `DEL` for every key in the set
@@ -193,6 +193,27 @@ room:{roomId}:meta  --[expired]--> cleanup worker
                                       └─ SMEMBERS room:{roomId}:keys
                                       └─ DEL all members
                                       └─ DEL room:{roomId}:keys
+```
+
+---
+
+## Early Cleanup When All Users Leave
+
+When a user leaves, after recording `left_at`, the backend checks whether every user in `room:{roomId}:users` has a `left_at` timestamp. If all users have left, `DeleteRoom` is called immediately — no need to wait for the TTL to expire.
+
+**Check logic:**
+1. `HKEYS room:{roomId}:users` — get all user IDs
+2. For each user: `HGET room:{roomId}:user:{userId}:meta left_at`
+3. If every user has a non-empty `left_at` → call `DeleteRoom`
+
+**`DeleteRoom` is idempotent** — safe to call from both the leave path and the expiry worker. If the room was already deleted early, the expiry event is a no-op (keys set is empty).
+
+```
+last user leaves  --[SetUserLeft]--> isRoomEmpty? yes
+                                          └─ DeleteRoom
+                                               └─ SMEMBERS room:{roomId}:keys
+                                               └─ DEL all members
+                                               └─ DEL room:{roomId}:keys
 ```
 
 ---

@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
 	"github.com/percypham/tempchat/internal/appctx"
 	"github.com/percypham/tempchat/internal/auth"
+	"github.com/percypham/tempchat/internal/common/config"
 	"github.com/percypham/tempchat/internal/hub"
 	"github.com/percypham/tempchat/internal/middleware"
 	"github.com/percypham/tempchat/internal/store"
@@ -22,6 +24,17 @@ type wsMessage struct {
 
 // WsHandler handles GET /v1/rooms/:roomId/ws.
 func WsHandler(s store.Store, h *hub.Hub) gin.HandlerFunc {
+	// Build origin host patterns for coder/websocket (matches against Origin URL host).
+	var originPatterns []string
+	for _, o := range strings.Split(config.App().AllowedOrigins, ",") {
+		o = strings.TrimSpace(o)
+		o = strings.TrimPrefix(o, "https://")
+		o = strings.TrimPrefix(o, "http://")
+		if o != "" {
+			originPatterns = append(originPatterns, o)
+		}
+	}
+
 	return func(c *gin.Context) {
 		roomID := c.Param("roomId")
 
@@ -33,7 +46,7 @@ func WsHandler(s store.Store, h *hub.Hub) gin.HandlerFunc {
 		}
 
 		ws, err := websocket.Accept(c.Writer, c.Request, &websocket.AcceptOptions{
-			InsecureSkipVerify: false, // enforce Origin check in production
+			OriginPatterns: originPatterns,
 		})
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "upgrade_failed"})

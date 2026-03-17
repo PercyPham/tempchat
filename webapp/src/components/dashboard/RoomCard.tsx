@@ -1,0 +1,65 @@
+import { useCountdown } from "../../hooks/useCountdown";
+import { CountdownBadge } from "../shared/CountdownBadge";
+import type { PersistedRoom } from "../../services/HotelManager";
+
+interface Props {
+  room: PersistedRoom;
+  name: string | null;
+  index: number;
+  onClick: () => void;
+}
+
+export function RoomCard({ room, name, index, onClick }: Props) {
+  const countdown = useCountdown(room.expiresAt);
+  const initial = name ? name.charAt(0).toUpperCase() : "·";
+
+  return (
+    <button
+      onClick={onClick}
+      className="group w-full text-left rounded-2xl overflow-hidden transition-all duration-200 hover:scale-[1.015] active:scale-[0.99]"
+      style={{
+        animationDelay: `${index * 70}ms`,
+        background: "linear-gradient(135deg, rgba(28,35,51,1) 0%, rgba(20,26,40,1) 100%)",
+        boxShadow: "0 1px 0 rgba(255,255,255,0.04) inset, 0 -1px 0 rgba(0,0,0,0.2) inset",
+      }}
+    >
+      <div className="flex items-center gap-4 px-4 py-3.5 relative">
+        {/* Amber left accent bar */}
+        <div
+          className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full transition-all duration-300 group-hover:top-0 group-hover:bottom-0 group-hover:opacity-100 opacity-50"
+          style={{ background: "linear-gradient(to bottom, rgba(245,158,11,0.8), rgba(217,119,6,0.5))" }}
+        />
+
+        {/* Avatar */}
+        <div
+          className="flex-shrink-0 h-11 w-11 rounded-xl flex items-center justify-center text-lg font-display font-bold text-amber uppercase transition-all duration-300 group-hover:rounded-2xl"
+          style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.15)" }}
+        >
+          {initial}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <p className="font-display font-semibold text-warm-white truncate text-[15px] leading-tight mb-0.5">
+            {name ?? <span className="text-warm-white/30">Loading…</span>}
+          </p>
+          <CountdownBadge label={countdown.label} urgency={countdown.urgency} />
+        </div>
+
+        {/* Chevron */}
+        <svg
+          width="14" height="14" viewBox="0 0 24 24" fill="none"
+          className="text-warm-white/20 flex-shrink-0 transition-all duration-200 group-hover:text-amber/40 group-hover:translate-x-0.5"
+        >
+          <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+
+      {/* Bottom amber shimmer on hover */}
+      <div
+        className="h-px w-0 group-hover:w-full transition-all duration-500"
+        style={{ background: "linear-gradient(to right, transparent, rgba(245,158,11,0.3), transparent)" }}
+      />
+    </button>
+  );
+}

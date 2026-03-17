@@ -52,7 +52,7 @@ func main() {
 
 	workerCtx, cancelWorkers := context.WithCancel(context.Background())
 	defer cancelWorkers()
-	go cleanup.Run(workerCtx, rdb)
+	go cleanup.Run(workerCtx, rdb, s)
 
 	srv := &http.Server{
 		Addr:    ":" + config.App().Port,

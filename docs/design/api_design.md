@@ -73,7 +73,7 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
 - **Endpoint:** `GET /v1/rooms/:roomId`
 - **Header:** Requires `X-TempChat-Auth`.
 - **Description:** Used to refresh the full state of the room (e.g., after detecting a message gap). Also used by non-members after a `room_full` rejection to check current capacity before deciding whether to boost.
-- **Note on `memberCount` vs `members`:** `memberCount` reflects all slots ever occupied (including users who have explicitly left), since slots are not reclaimed. `members` contains only currently active members (those who have not yet left).
+- **Note on `memberCount` vs `members`:** `memberCount` reflects all slots ever occupied (including users who have explicitly left), since slots are not reclaimed. `members` contains all users who have ever joined, including those who have left — departed members have a `leftAt` field set (Unix ms). This means `members.length === memberCount` and accurately reflects consumed capacity.
 - **Response:** `200 OK`
   ```
   {

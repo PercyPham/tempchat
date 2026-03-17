@@ -16,10 +16,15 @@ import (
 const ClaimsKey = "auth_claims"
 
 // RequireAuth returns a Gin middleware that validates the X-TempChat-Auth header.
+// For WebSocket connections (which cannot set custom headers), the token may
+// alternatively be passed via the ?token= query parameter.
 // uid in the token may be nil (valid for join requests and non-member boost).
 func RequireAuth(s store.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("X-TempChat-Auth")
+		if token == "" {
+			token = c.Query("token")
+		}
 		if token == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing_auth"})
 			return

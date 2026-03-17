@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -264,6 +265,7 @@ func (s *Store) JoinRoom(ctx appctx.AppCtx, roomID, name string) (*store.JoinRes
 
 // SetUserLeft records the leave timestamp and appends a left system event.
 // Returns the eid assigned to the left event, or 0 if the room has expired.
+// If all users have left after this call, the room is deleted immediately.
 func (s *Store) SetUserLeft(ctx appctx.AppCtx, roomID, userID string) (int64, error) {
 	meta, err := s.rdb.HGetAll(ctx, keyMeta(roomID)).Result()
 	if err != nil || len(meta) == 0 {
@@ -276,7 +278,52 @@ func (s *Store) SetUserLeft(ctx appctx.AppCtx, roomID, userID string) (int64, er
 	if err := s.rdb.HSet(ctx, keyUserMeta(roomID, userID), "left_at", nowMs).Err(); err != nil {
 		return 0, err
 	}
-	return s.appendSystemEvent(ctx, roomID, "left", userID, expiresAtMs, maxEvents)
+	eid, err := s.appendSystemEvent(ctx, roomID, "left", userID, expiresAtMs, maxEvents)
+	if err != nil {
+		return 0, err
+	}
+
+	if empty, _ := s.isRoomEmpty(ctx, roomID); empty {
+		_ = s.DeleteRoom(ctx, roomID)
+	}
+	return eid, nil
+}
+
+// isRoomEmpty returns true if every user in the room has a left_at timestamp.
+func (s *Store) isRoomEmpty(ctx context.Context, roomID string) (bool, error) {
+	userIDs, err := s.rdb.HKeys(ctx, keyUsers(roomID)).Result()
+	if err != nil {
+		return false, err
+	}
+	if len(userIDs) == 0 {
+		return true, nil
+	}
+	for _, uid := range userIDs {
+		leftAt, err := s.rdb.HGet(ctx, keyUserMeta(roomID, uid), "left_at").Result()
+		if errors.Is(err, redis.Nil) || leftAt == "" {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+// DeleteRoom immediately deletes all Redis keys associated with a room.
+// It is safe to call even if the room is already gone (idempotent).
+func (s *Store) DeleteRoom(ctx context.Context, roomID string) error {
+	members, err := s.rdb.SMembers(ctx, keyKeys(roomID)).Result()
+	if err != nil || len(members) == 0 {
+		return err
+	}
+	pipe := s.rdb.Pipeline()
+	for _, k := range members {
+		pipe.Del(ctx, k)
+	}
+	pipe.Del(ctx, keyKeys(roomID))
+	_, err = pipe.Exec(ctx)
+	return err
 }
 
 // GetUserJoinEid returns the join_eid for a user in a room.

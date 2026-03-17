@@ -1,3 +1,5 @@
+name: tempchat-dev
+
 services:
   redis:
     image: redis:8-alpine
