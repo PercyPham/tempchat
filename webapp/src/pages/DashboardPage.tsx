@@ -6,6 +6,7 @@ import { hotel } from "../context/HotelContext";
 import { RoomCard } from "../components/dashboard/RoomCard";
 import { EmptyState } from "../components/dashboard/EmptyState";
 import { FabButton } from "../components/dashboard/FabButton";
+import { ThemeToggle } from "../components/shared/ThemeToggle";
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -29,20 +30,23 @@ export function DashboardPage() {
     <div className="max-w-lg mx-auto px-4 pt-12 pb-24">
       {/* Header */}
       <header className="mb-10 animate-slide-up">
-        <div className="flex items-center gap-2 mb-1">
-          {/* Ember dot */}
-          <div
-            className="h-2 w-2 rounded-full"
-            style={{ background: "#F59E0B", boxShadow: "0 0 8px rgba(245,158,11,0.8)" }}
-          />
-          <span className="text-xs font-medium text-amber/70 uppercase tracking-[0.15em]">
-            TempChat
-          </span>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            {/* Ember dot */}
+            <div
+              className="h-2 w-2 rounded-full"
+              style={{ background: "#F59E0B", boxShadow: "0 0 8px rgba(245,158,11,0.8)" }}
+            />
+            <span className="text-xs font-medium text-amber/70 uppercase tracking-[0.15em]">
+              TempChat
+            </span>
+          </div>
+          <ThemeToggle />
         </div>
         <h1
           className="font-display text-4xl font-extrabold leading-none"
           style={{
-            background: "linear-gradient(135deg, #F9FAFB 30%, rgba(249,250,251,0.5) 100%)",
+            background: "var(--tc-title-gradient)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
           }}

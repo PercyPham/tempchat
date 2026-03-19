@@ -21,11 +21,11 @@ export function SystemMessage({ message, senderName, unreadRef }: Props) {
   if (message.systemType === "unread_divider") {
     return (
       <div ref={unreadRef} className="flex items-center gap-3 py-1 animate-fade-in">
-        <div className="flex-1 h-px" style={{ background: "rgba(99,102,241,0.3)" }} />
-        <span className="text-[11px] tracking-wide" style={{ color: "rgba(99,102,241,0.7)" }}>
+        <div className="flex-1 h-px" style={{ background: "var(--tc-divider-line)" }} />
+        <span className="text-[11px] tracking-wide" style={{ color: "var(--tc-divider-text)" }}>
           New Messages
         </span>
-        <div className="flex-1 h-px" style={{ background: "rgba(99,102,241,0.3)" }} />
+        <div className="flex-1 h-px" style={{ background: "var(--tc-divider-line)" }} />
       </div>
     );
   }
@@ -41,7 +41,7 @@ export function SystemMessage({ message, senderName, unreadRef }: Props) {
             ? { background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", color: "rgba(245,158,11,0.7)" }
             : isGap
             ? { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "rgba(239,68,68,0.6)" }
-            : { background: "rgba(255,255,255,0.04)", color: "rgba(249,250,251,0.3)" }
+            : { background: "var(--tc-sys-default-bg)", color: "var(--tc-sys-default-color)" }
         }
       >
         {label(message, senderName)}

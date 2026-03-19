@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "./context/ThemeContext";
 import { HotelProvider } from "./context/HotelContext";
 import { AppShell } from "./components/layout/AppShell";
 import { Spinner } from "./components/shared/Spinner";
@@ -11,6 +12,7 @@ import { ChatPage } from "./pages/ChatPage";
 
 export default function App() {
   return (
+    <ThemeProvider>
     <BrowserRouter>
       <AppShell>
         <Suspense
@@ -32,5 +34,6 @@ export default function App() {
         </Suspense>
       </AppShell>
     </BrowserRouter>
+    </ThemeProvider>
   );
 }

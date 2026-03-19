@@ -46,10 +46,10 @@ export function MessageInput({ onSend, disabled }: Props) {
       onSubmit={(e) => { e.preventDefault(); submit(); }}
       className="flex flex-col px-4 py-3 gap-1"
       style={{
-        background: "rgba(17,24,39,0.85)",
+        background: "var(--tc-header-bg)",
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
-        borderTop: "1px solid rgba(255,255,255,0.05)",
+        borderTop: "1px solid var(--tc-header-border)",
       }}
     >
       <div className="flex items-end gap-2">
@@ -75,7 +75,7 @@ export function MessageInput({ onSend, disabled }: Props) {
                   background: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)",
                   boxShadow: "0 0 12px rgba(245,158,11,0.35)",
                 }
-              : { background: "rgba(28,35,51,0.6)" }
+              : { background: "var(--tc-input-send-disabled)" }
           }
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none"

@@ -8,15 +8,155 @@
   }
 }
 
+/* ─── Light mode (default) ─────────────────────────────────────────────── */
+:root {
+  --tc-obsidian:   #F6F1E8;
+  --tc-charcoal:   #EDE7D8;
+  --tc-surface:    #E4DDD0;
+  --tc-surface-2:  #DAD4C4;
+  --tc-warm-white: #1A140D;
+
+  --tc-header-bg:             rgba(237,231,216,0.88);
+  --tc-header-border:         rgba(26,20,13,0.07);
+  --tc-header-shadow:         rgba(245,158,11,0.05);
+
+  --tc-boost-pill-healthy-bg: rgba(237,231,216,0.9);
+  --tc-boost-pill-healthy-bd: rgba(245,158,11,0.25);
+  --tc-boost-pill-warning-bg: rgba(237,231,216,0.9);
+  --tc-boost-pill-warning-bd: rgba(251,146,60,0.35);
+  --tc-boost-pill-urgent-bg:  rgba(239,68,68,0.08);
+  --tc-boost-pill-urgent-bd:  rgba(239,68,68,0.4);
+
+  --tc-msg-other-bg:          rgba(228,221,208,0.95);
+  --tc-msg-other-border:      rgba(26,20,13,0.07);
+  --tc-msg-other-inset:       rgba(255,255,255,0.5);
+  --tc-msg-other-color:       rgba(26,20,13,0.9);
+
+  --tc-input-bg:              rgba(228,221,208,0.7);
+  --tc-input-border:          rgba(26,20,13,0.1);
+  --tc-input-inset:           rgba(26,20,13,0.03);
+  --tc-input-send-disabled:   rgba(218,212,196,0.7);
+
+  --tc-card-bg-from:          rgba(228,221,208,1);
+  --tc-card-bg-to:            rgba(213,207,193,1);
+  --tc-card-inset-top:        rgba(255,255,255,0.4);
+  --tc-card-inset-bot:        rgba(26,20,13,0.05);
+
+  --tc-panel-border:          rgba(26,20,13,0.08);
+  --tc-panel-shadow:          rgba(26,20,13,0.12);
+
+  --tc-sheet-shadow:          0 -20px 60px rgba(26,20,13,0.1), 0 -1px 0 rgba(245,158,11,0.1);
+
+  --tc-copy-btn-bg:           rgba(228,221,208,0.8);
+  --tc-copy-btn-border:       rgba(26,20,13,0.1);
+  --tc-copy-btn-color:        rgba(26,20,13,0.65);
+  --tc-copy-done-bg:          rgba(245,158,11,0.1);
+  --tc-copy-done-border:      rgba(245,158,11,0.3);
+
+  --tc-leave-btn-bg:          rgba(239,68,68,0.06);
+  --tc-leave-btn-border:      rgba(239,68,68,0.12);
+
+  --tc-boost-action-bg:       rgba(245,158,11,0.07);
+  --tc-boost-action-border:   rgba(245,158,11,0.15);
+
+  --tc-member-left-bg:        rgba(26,20,13,0.05);
+  --tc-member-left-border:    rgba(26,20,13,0.07);
+  --tc-member-left-color:     rgba(26,20,13,0.4);
+
+  --tc-sys-default-bg:        rgba(26,20,13,0.05);
+  --tc-sys-default-color:     rgba(26,20,13,0.35);
+
+  --tc-divider-line:          rgba(99,102,241,0.4);
+  --tc-divider-text:          rgba(99,102,241,0.8);
+
+  --tc-title-gradient:        linear-gradient(135deg, #1A140D 30%, rgba(26,20,13,0.5) 100%);
+
+  --tc-ambient-bottom:        radial-gradient(ellipse at center bottom, rgba(245,158,11,0.06) 0%, transparent 70%);
+  --tc-ambient-top:           radial-gradient(ellipse at top right, rgba(245,158,11,0.03) 0%, transparent 70%);
+
+  --tc-scrollbar-thumb:       rgba(245,158,11,0.15);
+  --tc-scrollbar-thumb-hover: rgba(245,158,11,0.35);
+
+  --tc-noise-opacity:         0.025;
+}
+
+/* ─── Dark mode overrides ──────────────────────────────────────────────── */
+.dark {
+  --tc-obsidian:   #0D0F14;
+  --tc-charcoal:   #111827;
+  --tc-surface:    #1C2333;
+  --tc-surface-2:  #232D42;
+  --tc-warm-white: #F9FAFB;
+
+  --tc-header-bg:             rgba(17,24,39,0.85);
+  --tc-header-border:         rgba(255,255,255,0.05);
+  --tc-header-shadow:         rgba(245,158,11,0.06);
+
+  --tc-boost-pill-healthy-bg: rgba(17,24,39,0.9);
+  --tc-boost-pill-healthy-bd: rgba(245,158,11,0.2);
+  --tc-boost-pill-warning-bg: rgba(17,24,39,0.9);
+  --tc-boost-pill-warning-bd: rgba(251,146,60,0.35);
+  --tc-boost-pill-urgent-bg:  rgba(239,68,68,0.08);
+  --tc-boost-pill-urgent-bd:  rgba(239,68,68,0.4);
+
+  --tc-msg-other-bg:          rgba(28,35,51,0.9);
+  --tc-msg-other-border:      rgba(255,255,255,0.06);
+  --tc-msg-other-inset:       rgba(255,255,255,0.03);
+  --tc-msg-other-color:       rgba(249,250,251,0.9);
+
+  --tc-input-bg:              rgba(17,24,39,0.85);
+  --tc-input-border:          rgba(255,255,255,0.05);
+  --tc-input-inset:           rgba(255,255,255,0.03);
+  --tc-input-send-disabled:   rgba(28,35,51,0.6);
+
+  --tc-card-bg-from:          rgba(28,35,51,1);
+  --tc-card-bg-to:            rgba(20,26,40,1);
+  --tc-card-inset-top:        rgba(255,255,255,0.04);
+  --tc-card-inset-bot:        rgba(0,0,0,0.2);
+
+  --tc-panel-border:          rgba(255,255,255,0.07);
+  --tc-panel-shadow:          rgba(0,0,0,0.5);
+
+  --tc-sheet-shadow:          0 -20px 60px rgba(0,0,0,0.5), 0 -1px 0 rgba(245,158,11,0.12);
+
+  --tc-copy-btn-bg:           rgba(28,35,51,0.8);
+  --tc-copy-btn-border:       rgba(255,255,255,0.07);
+  --tc-copy-btn-color:        rgba(249,250,251,0.6);
+  --tc-copy-done-bg:          rgba(245,158,11,0.1);
+  --tc-copy-done-border:      rgba(245,158,11,0.3);
+
+  --tc-leave-btn-bg:          rgba(239,68,68,0.06);
+  --tc-leave-btn-border:      rgba(239,68,68,0.1);
+
+  --tc-boost-action-bg:       rgba(245,158,11,0.06);
+  --tc-boost-action-border:   rgba(245,158,11,0.12);
+
+  --tc-member-left-bg:        rgba(255,255,255,0.04);
+  --tc-member-left-border:    rgba(255,255,255,0.06);
+  --tc-member-left-color:     rgba(249,250,251,0.4);
+
+  --tc-sys-default-bg:        rgba(255,255,255,0.04);
+  --tc-sys-default-color:     rgba(249,250,251,0.3);
+
+  --tc-divider-line:          rgba(99,102,241,0.3);
+  --tc-divider-text:          rgba(99,102,241,0.7);
+
+  --tc-title-gradient:        linear-gradient(135deg, #F9FAFB 30%, rgba(249,250,251,0.5) 100%);
+
+  --tc-ambient-bottom:        radial-gradient(ellipse at center bottom, rgba(245,158,11,0.07) 0%, transparent 70%);
+  --tc-ambient-top:           radial-gradient(ellipse at top right, rgba(245,158,11,0.04) 0%, transparent 70%);
+
+  --tc-scrollbar-thumb:       rgba(245,158,11,0.2);
+  --tc-scrollbar-thumb-hover: rgba(245,158,11,0.4);
+
+  --tc-noise-opacity:         0.038;
+}
+
+/* ─── Static theme tokens ──────────────────────────────────────────────── */
 @theme {
-  --color-obsidian:   #0D0F14;
-  --color-charcoal:   #111827;
-  --color-surface:    #1C2333;
-  --color-surface-2:  #232D42;
   --color-amber:      #F59E0B;
   --color-amber-dark: #D97706;
   --color-amber-dim:  #92400E;
-  --color-warm-white: #F9FAFB;
   --color-crimson:    #EF4444;
   --font-display: "Syne", sans-serif;
   --font-body:    "Outfit", sans-serif;
@@ -28,6 +168,15 @@
   --animate-glow-ring:     glow-ring 2.5s ease-in-out infinite;
   --animate-msg-in:        msg-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-panel-right:   panel-right 0.35s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* ─── Dynamic theme tokens (CSS-variable backed) ───────────────────────── */
+@theme inline {
+  --color-obsidian:   var(--tc-obsidian);
+  --color-charcoal:   var(--tc-charcoal);
+  --color-surface:    var(--tc-surface);
+  --color-surface-2:  var(--tc-surface-2);
+  --color-warm-white: var(--tc-warm-white);
 }
 
 @keyframes slide-up {
@@ -77,8 +226,8 @@ html {
 /* Scrollbar styling */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(245,158,11,0.2); border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(245,158,11,0.4); }
+::-webkit-scrollbar-thumb { background: var(--tc-scrollbar-thumb); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--tc-scrollbar-thumb-hover); }
 
 /* Noise grain overlay */
 body::after {
@@ -87,7 +236,7 @@ body::after {
   inset: 0;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.038;
+  opacity: var(--tc-noise-opacity);
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 200px 200px;
 }

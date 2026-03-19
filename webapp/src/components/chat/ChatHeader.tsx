@@ -3,18 +3,18 @@ import type { CountdownState, Urgency } from "../../hooks/useCountdown";
 
 const boostPillStyle: Record<Urgency, React.CSSProperties> = {
   healthy: {
-    background: "rgba(17,24,39,0.9)",
-    border: "1px solid rgba(245,158,11,0.2)",
+    background: "var(--tc-boost-pill-healthy-bg)",
+    border: "1px solid var(--tc-boost-pill-healthy-bd)",
     color: "rgba(245,158,11,0.8)",
   },
   warning: {
-    background: "rgba(17,24,39,0.9)",
-    border: "1px solid rgba(251,146,60,0.35)",
+    background: "var(--tc-boost-pill-warning-bg)",
+    border: "1px solid var(--tc-boost-pill-warning-bd)",
     color: "#FB923C",
   },
   urgent: {
-    background: "rgba(239,68,68,0.08)",
-    border: "1px solid rgba(239,68,68,0.4)",
+    background: "var(--tc-boost-pill-urgent-bg)",
+    border: "1px solid var(--tc-boost-pill-urgent-bd)",
     color: "#EF4444",
   },
 };
@@ -34,17 +34,17 @@ export function ChatHeader({ roomName, memberCount, countdown, onMenuOpen, onBoo
     <header
       className="flex items-center gap-3 px-4 py-3 sticky top-0 z-20"
       style={{
-        background: "rgba(17,24,39,0.85)",
+        background: "var(--tc-header-bg)",
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
-        boxShadow: "0 1px 0 rgba(245,158,11,0.06)",
+        borderBottom: "1px solid var(--tc-header-border)",
+        boxShadow: "0 1px 0 var(--tc-header-shadow)",
       }}
     >
       <button
         onClick={() => navigate("/")}
         aria-label="Back"
-        className="flex-shrink-0 h-9 w-9 rounded-xl flex items-center justify-center text-warm-white/40 hover:text-warm-white hover:bg-white/6 transition-all"
+        className="flex-shrink-0 h-9 w-9 rounded-xl flex items-center justify-center text-warm-white/40 hover:text-warm-white hover:bg-warm-white/8 transition-all"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
           <path d="M19 12H5M5 12l7 7M5 12l7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -73,7 +73,7 @@ export function ChatHeader({ roomName, memberCount, countdown, onMenuOpen, onBoo
       <button
         onClick={onMenuOpen}
         aria-label="Room details"
-        className="flex-shrink-0 h-9 w-9 rounded-xl flex items-center justify-center text-warm-white/40 hover:text-warm-white hover:bg-white/6 transition-all"
+        className="flex-shrink-0 h-9 w-9 rounded-xl flex items-center justify-center text-warm-white/40 hover:text-warm-white hover:bg-warm-white/8 transition-all"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="5" r="1.5" fill="currentColor" />

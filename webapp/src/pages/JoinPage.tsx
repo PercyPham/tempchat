@@ -161,15 +161,15 @@ export function JoinPage() {
             autoComplete="shouldnotautocomplete"
             className="w-full rounded-2xl px-4 py-3.5 text-warm-white placeholder-warm-white/20 text-sm focus:outline-none transition-all"
             style={{
-              background: "rgba(28,35,51,0.6)",
-              border: "1px solid rgba(255,255,255,0.07)",
+              background: "var(--tc-input-bg)",
+              border: "1px solid var(--tc-input-border)",
             }}
             onFocus={(e) => {
               e.currentTarget.style.border = "1px solid rgba(245,158,11,0.4)";
               e.currentTarget.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.08)";
             }}
             onBlur={(e) => {
-              e.currentTarget.style.border = "1px solid rgba(255,255,255,0.07)";
+              e.currentTarget.style.border = "1px solid var(--tc-input-border)";
               e.currentTarget.style.boxShadow = "none";
             }}
           />

@@ -15,7 +15,8 @@
       "Bash(pnpm tsc:*)",
       "Bash(pnpm exec:*)",
       "Bash(make typecheck-wa:*)",
-      "Bash(make test-wa:*)"
+      "Bash(make test-wa:*)",
+      "Bash(ls -la /Users/percypham/Projects/tempchat-spec/webapp/*.*)"
     ]
   }
 }

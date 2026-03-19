@@ -67,9 +67,9 @@ export function InvitePage() {
             onClick={() => { void handleCopy(); }}
             className="flex items-center gap-2.5 w-full justify-center rounded-2xl py-3.5 px-5 transition-all active:scale-[0.98]"
             style={{
-              background: copied ? "rgba(245,158,11,0.1)" : "rgba(28,35,51,0.8)",
-              border: copied ? "1px solid rgba(245,158,11,0.3)" : "1px solid rgba(255,255,255,0.07)",
-              color: copied ? "#F59E0B" : "rgba(249,250,251,0.6)",
+              background: copied ? "var(--tc-copy-done-bg)" : "var(--tc-copy-btn-bg)",
+              border: copied ? "1px solid var(--tc-copy-done-border)" : "1px solid var(--tc-copy-btn-border)",
+              color: copied ? "#F59E0B" : "var(--tc-copy-btn-color)",
             }}
           >
             {copied ? (
@@ -95,9 +95,9 @@ export function InvitePage() {
               onClick={() => { void handleShare(); }}
               className="flex items-center gap-2.5 w-full justify-center rounded-2xl py-3.5 px-5 transition-all active:scale-[0.98]"
               style={{
-                background: "rgba(28,35,51,0.8)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                color: "rgba(249,250,251,0.6)",
+                background: "var(--tc-copy-btn-bg)",
+                border: "1px solid var(--tc-copy-btn-border)",
+                color: "var(--tc-copy-btn-color)",
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">

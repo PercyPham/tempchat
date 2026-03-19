@@ -25,12 +25,12 @@ export function BottomSheet({ open, onClose, children, title }: Props) {
         onClick={onClose}
       />
       {/* Sheet */}
-      <div className="relative bg-charcoal border-t border-white/[0.07] rounded-t-3xl max-h-[88vh] overflow-y-auto animate-sheet-up"
-        style={{ boxShadow: "0 -20px 60px rgba(0,0,0,0.5), 0 -1px 0 rgba(245,158,11,0.12)" }}
+      <div className="relative bg-charcoal border-t border-warm-white/[0.07] rounded-t-3xl max-h-[88vh] overflow-y-auto animate-sheet-up"
+        style={{ boxShadow: "var(--tc-sheet-shadow)" }}
       >
         {/* Drag handle */}
         <div className="sticky top-0 pt-4 pb-2 flex flex-col items-center bg-charcoal z-10">
-          <div className="h-1 w-10 rounded-full bg-white/15" />
+          <div className="h-1 w-10 rounded-full bg-warm-white/15" />
           {title && (
             <h2 className="font-display text-lg font-semibold text-warm-white mt-4 px-6 w-full">{title}</h2>
           )}

@@ -20,8 +20,8 @@ export function RoomCard({ room, name, index, hasNew, onClick }: Props) {
       className="group w-full text-left rounded-2xl overflow-hidden transition-all duration-200 hover:scale-[1.015] active:scale-[0.99]"
       style={{
         animationDelay: `${index * 70}ms`,
-        background: "linear-gradient(135deg, rgba(28,35,51,1) 0%, rgba(20,26,40,1) 100%)",
-        boxShadow: "0 1px 0 rgba(255,255,255,0.04) inset, 0 -1px 0 rgba(0,0,0,0.2) inset",
+        background: "linear-gradient(135deg, var(--tc-card-bg-from) 0%, var(--tc-card-bg-to) 100%)",
+        boxShadow: "0 1px 0 var(--tc-card-inset-top) inset, 0 -1px 0 var(--tc-card-inset-bot) inset",
       }}
     >
       <div className="flex items-center gap-4 px-4 py-3.5 relative">

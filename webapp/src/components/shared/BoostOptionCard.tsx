@@ -34,7 +34,7 @@ export function BoostOptionCard({ option, onSelect }: Props) {
             `${option.maxParticipants} members`,
             `${option.maxEvents} events`,
           ].map((tag) => (
-            <span key={tag} className="text-xs bg-white/6 text-warm-white/50 rounded-full px-2.5 py-1">
+            <span key={tag} className="text-xs bg-warm-white/8 text-warm-white/50 rounded-full px-2.5 py-1">
               {tag}
             </span>
           ))}

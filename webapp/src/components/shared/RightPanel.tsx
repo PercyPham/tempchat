@@ -30,19 +30,19 @@ export function RightPanel({ open, onClose, title, children, footer }: Props) {
         className="relative flex flex-col bg-charcoal h-full animate-panel-right"
         style={{
           width: "min(92vw, 400px)",
-          borderLeft: "1px solid rgba(255,255,255,0.07)",
-          boxShadow: "-20px 0 60px rgba(0,0,0,0.5), -1px 0 0 rgba(245,158,11,0.06)",
+          borderLeft: "1px solid var(--tc-panel-border)",
+          boxShadow: "-20px 0 60px var(--tc-panel-shadow), -1px 0 0 var(--tc-header-shadow)",
         }}
       >
         {/* Header */}
         <div
           className="flex items-center justify-between px-5 py-4 flex-shrink-0"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+          style={{ borderBottom: "1px solid var(--tc-panel-border)" }}
         >
           <h2 className="font-display text-lg font-semibold text-warm-white truncate pr-3">{title}</h2>
           <button
             onClick={onClose}
-            className="flex items-center justify-center h-8 w-8 rounded-xl transition-colors hover:bg-white/8 text-warm-white/40 hover:text-warm-white/70 flex-shrink-0"
+            className="flex items-center justify-center h-8 w-8 rounded-xl transition-colors hover:bg-warm-white/8 text-warm-white/40 hover:text-warm-white/70 flex-shrink-0"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -59,7 +59,7 @@ export function RightPanel({ open, onClose, title, children, footer }: Props) {
         {footer && (
           <div
             className="flex-shrink-0 px-5 pb-6 pt-3"
-            style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+            style={{ borderTop: "1px solid var(--tc-panel-border)" }}
           >
             {footer}
           </div>

@@ -25,17 +25,17 @@ function InputField({
         autoComplete={autoComplete ?? "shouldnotautocomplete"}
         className="w-full rounded-2xl px-4 py-3.5 text-warm-white placeholder-warm-white/20 text-sm bg-transparent focus:outline-none transition-all"
         style={{
-          background: "rgba(28,35,51,0.6)",
-          border: "1px solid rgba(255,255,255,0.07)",
-          boxShadow: "0 1px 0 rgba(255,255,255,0.03) inset",
+          background: "var(--tc-input-bg)",
+          border: "1px solid var(--tc-input-border)",
+          boxShadow: "0 1px 0 var(--tc-input-inset) inset",
         }}
         onFocus={(e) => {
           e.currentTarget.style.border = "1px solid rgba(245,158,11,0.4)";
-          e.currentTarget.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.08), 0 1px 0 rgba(255,255,255,0.03) inset";
+          e.currentTarget.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.08), 0 1px 0 var(--tc-input-inset) inset";
         }}
         onBlur={(e) => {
-          e.currentTarget.style.border = "1px solid rgba(255,255,255,0.07)";
-          e.currentTarget.style.boxShadow = "0 1px 0 rgba(255,255,255,0.03) inset";
+          e.currentTarget.style.border = "1px solid var(--tc-input-border)";
+          e.currentTarget.style.boxShadow = "0 1px 0 var(--tc-input-inset) inset";
         }}
       />
     </div>

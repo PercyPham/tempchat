@@ -31,10 +31,10 @@ export function MessageBubble({ message, isSelf, senderName }: Props) {
                 color: "#0D0F14",
               }
             : {
-                background: "rgba(28,35,51,0.9)",
-                border: "1px solid rgba(255,255,255,0.06)",
-                boxShadow: "0 1px 0 rgba(255,255,255,0.03) inset",
-                color: "rgba(249,250,251,0.9)",
+                background: "var(--tc-msg-other-bg)",
+                border: "1px solid var(--tc-msg-other-border)",
+                boxShadow: "0 1px 0 var(--tc-msg-other-inset) inset",
+                color: "var(--tc-msg-other-color)",
               }
         }
       >

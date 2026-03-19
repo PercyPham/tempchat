@@ -15,11 +15,11 @@ export function QRDisplay({ url, size = 220 }: Props) {
           boxShadow: "0 0 30px rgba(245,158,11,0.2), 0 0 60px rgba(245,158,11,0.08)",
         }}
       >
-        <div className="bg-warm-white rounded-[22px] p-5">
+        <div className="bg-white rounded-[22px] p-5">
           <QRCodeSVG
             value={url}
             size={size}
-            bgColor="#F9FAFB"
+            bgColor="#FFFFFF"
             fgColor="#0D0F14"
             level="M"
           />
