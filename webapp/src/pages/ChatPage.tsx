@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { hotel, hotelActions } from "../context/HotelContext";
 import { useCountdown } from "../hooks/useCountdown";
+import { useVisualViewport } from "../hooks/useVisualViewport";
 import { useNotifications } from "../hooks/useNotifications";
 import { useWebSocket, type WSEventData } from "../hooks/useWebSocket";
 import { decrypt, encrypt } from "../lib/crypto";
@@ -31,6 +32,7 @@ export interface PlainMessage {
 export function ChatPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
+  const visualViewport = useVisualViewport();
 
   const [session, setSession] = useState<RoomService | null>(null);
   const [roomInfo, setRoomInfo] = useState<PlainRoomInfo | null>(null);
@@ -286,8 +288,15 @@ export function ChatPage() {
     );
   }
 
+  const containerStyle = visualViewport !== null
+    ? { height: visualViewport }
+    : undefined;
+
   return (
-    <div className="fixed inset-0 flex flex-col max-w-lg mx-auto bg-obsidian">
+    <div
+      className="fixed inset-x-0 top-0 h-[100dvh] flex flex-col max-w-lg mx-auto bg-obsidian"
+      style={containerStyle}
+    >
       <ChatHeader
         roomName={roomInfo?.name ?? "…"}
         memberCount={roomInfo?.members.filter((m) => !m.leftAt).length ?? 0}

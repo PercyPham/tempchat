@@ -62,7 +62,7 @@ export function MessageInput({ onSend, disabled }: Props) {
           rows={1}
           autoComplete="shouldnotautocomplete"
           className="flex-1 text-sm text-warm-white placeholder-warm-white/20 resize-none focus:outline-none bg-transparent leading-relaxed disabled:opacity-50 py-1.5 max-h-28 overflow-y-auto"
-          style={{ fieldSizing: "content" } as React.CSSProperties}
+          style={{ fieldSizing: "content", fontSize: "16px" } as React.CSSProperties}
         />
         <button
           type="submit"
