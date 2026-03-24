@@ -28,6 +28,7 @@ function InputField({
           background: "var(--tc-input-bg)",
           border: "1px solid var(--tc-input-border)",
           boxShadow: "0 1px 0 var(--tc-input-inset) inset",
+          fontSize: "16px",
         }}
         onFocus={(e) => {
           e.currentTarget.style.border = "1px solid rgba(245,158,11,0.4)";

@@ -163,6 +163,7 @@ export function JoinPage() {
             style={{
               background: "var(--tc-input-bg)",
               border: "1px solid var(--tc-input-border)",
+              fontSize: "16px",
             }}
             onFocus={(e) => {
               e.currentTarget.style.border = "1px solid rgba(245,158,11,0.4)";
