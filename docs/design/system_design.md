@@ -103,7 +103,7 @@ See [redis_design.md](redis_design.md) for the full key schema. Note: `room:{roo
 | ------------------- | -------------------- | -------------------- | -------------------- |
 | **Participant Cap** | 5 **Total** Users    | 10 **Total** Users   | 50 **Total** Users   |
 | **Room Lifetime**   | 3 Hours              | 24 Hours             | 7 Days               |
-| **Message Buffer**  | 50 Events            | 100 Events           | 100 Events           |
+| **Message Buffer**  | 50 Events            | 100 Events           | 200 Events           |
 | **Binary Sharing**  | P2P Only             | P2P Only             | P2P Only             |
 | **Room Name**       | Static (at creation) | Static (at creation) | Static (at creation) |
 | **Pricing**         | $0                   | One-time Fee / Room  | One-time Fee / Room  |

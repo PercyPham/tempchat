@@ -47,7 +47,7 @@ var options = []BoostOption{
 		Name:            "Pro Boost",
 		TTL:             7 * 24 * time.Hour,
 		MaxParticipants: 50,
-		MaxEvents:       100,
+		MaxEvents:       200,
 		Price:           "$10",
 		RegionalPrices:  []RegionalPrice{{Region: "VN", Price: "50.000 ₫"}},
 	},
