@@ -25,7 +25,7 @@ export function BoostOptionCard({ option, onSelect }: Props) {
         <div className="flex items-start justify-between gap-3 mb-3">
           <span className="font-display font-bold text-warm-white text-base">{option.name}</span>
           <span className="font-display font-bold text-amber text-lg leading-none">
-            {option.price}
+            {`$${(option.pricing.usdCents / 100).toFixed(2)}`}
           </span>
         </div>
         <div className="flex flex-wrap gap-2">

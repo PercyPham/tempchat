@@ -127,10 +127,14 @@ export async function leaveRoom(roomId: string, token: string): Promise<void> {
 export interface BoostOption {
   id: string;
   name: string;
-  price: string;
   ttlMs: number;
   maxParticipants: number;
   maxEvents: number;
+  pricing: {
+    usdCents: number;
+    vnd: number;
+    paddlePriceId: string;
+  };
 }
 
 export async function getBoostOptions(): Promise<BoostOption[]> {

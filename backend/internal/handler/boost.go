@@ -19,8 +19,11 @@ func GetBoostOptions() gin.HandlerFunc {
 				"ttlMs":           o.TTL.Milliseconds(),
 				"maxParticipants": o.MaxParticipants,
 				"maxEvents":       o.MaxEvents,
-				"priceUsdCents":   o.Pricing.USDCents,
-				"priceVnd":        o.Pricing.VND,
+				"pricing": gin.H{
+					"usdCents":      o.Pricing.USDCents,
+					"vnd":           o.Pricing.VND,
+					"paddlePriceId": o.Pricing.PaddlePriceID,
+				},
 			}
 		}
 		c.JSON(http.StatusOK, resp)
