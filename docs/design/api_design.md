@@ -105,27 +105,29 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
   ```
   [
     {
-      "id": "boost_abc123",
+      "id": "boost_plus",
       "name": "Plus Boost",
       "ttlMs": 86400000,
       "maxParticipants": 10,
       "maxEvents": 100,
-      "price": "$2.99"
+      "priceUsdCents": 500,
+      "priceVnd": 20000
     },
     {
-      "id": "boost_def456",
+      "id": "boost_pro",
       "name": "Pro Boost",
       "ttlMs": 604800000,
       "maxParticipants": 50,
-      "maxEvents": 100,
-      "price": "$9.99"
+      "maxEvents": 200,
+      "priceUsdCents": 1000,
+      "priceVnd": 50000
     }
   ]
   ```
 
 ### **2.6 Boost (Payment-Triggered)**
 
-Room boosts are applied via payment webhook callbacks (SePay / Paddle). The payment flow and webhook endpoint design are TBD. Once payment is confirmed, the server runs the atomic Lua boost script and broadcasts a `room:boosted` WebSocket event to all connected clients.
+Room boosts are applied via payment webhook callbacks (SePay / Paddle). See [payment_design.md](payment_design.md) for the full payment flow, webhook endpoints, and order storage design. Once payment is confirmed, the server runs the atomic Lua boost script and broadcasts a `room:boosted` WebSocket event to all connected clients.
 
 Non-members boosting from the "Room Full" screen authenticate with `uid: null` (same pattern as the initial join request), using the `privateKey` from the URL hash.
 
