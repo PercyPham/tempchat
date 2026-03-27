@@ -20,3 +20,5 @@
 
 # Firebase
 .firebase/
+
+.claude/settings.local.json

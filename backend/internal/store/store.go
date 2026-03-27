@@ -5,8 +5,17 @@ package store
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"github.com/percypham/tempchat/internal/appctx"
+)
+
+// Sentinel errors for coupon and order operations.
+var (
+	ErrCouponNotFound = errors.New("coupon_not_found")
+	ErrCouponUsed     = errors.New("coupon_already_used")
+	ErrOrderNotFound  = errors.New("order_not_found")
 )
 
 // Store is the primary storage interface for room and event operations.
@@ -20,6 +29,24 @@ type Store interface {
 	GetEvents(ctx appctx.AppCtx, roomID string, afterEid int64) ([]Event, error)
 	GetUserJoinEid(ctx appctx.AppCtx, roomID, userID string) (int64, error)
 	DeleteRoom(ctx context.Context, roomID string) error
+
+	// Boost applies an upgrade to a room atomically via Lua script.
+	ApplyBoost(ctx appctx.AppCtx, req ApplyBoostRequest) (*ApplyBoostResult, error)
+
+	// Coupon operations.
+	CreateCoupon(ctx appctx.AppCtx, coupon *Coupon) error
+	GetCoupon(ctx appctx.AppCtx, code string) (*Coupon, error)
+	MarkCouponUsed(ctx appctx.AppCtx, code, roomID string) error
+
+	// Order operations.
+	GetOrder(ctx appctx.AppCtx, orderID string) (*Order, error)
+	CreateOrder(ctx appctx.AppCtx, order *Order) error
+	SetOrderCompleted(ctx appctx.AppCtx, orderID string) error
+	SetOrderRoomExpired(ctx appctx.AppCtx, orderID, couponCode string) error
+
+	// Idempotency helpers for webhook deduplication.
+	SetIdempotencyKey(ctx appctx.AppCtx, key, value string, ttl time.Duration) error
+	CheckIdempotencyKey(ctx appctx.AppCtx, key string) (string, bool, error)
 }
 
 // CreateRoomRequest is the input for creating a new room.
@@ -72,4 +99,50 @@ type Event struct {
 	UID  string
 	Msg  string // encrypted ciphertext; only set for chat events
 	Ts   int64  // unix ms
+}
+
+// ApplyBoostRequest is the input for the atomic room boost operation.
+type ApplyBoostRequest struct {
+	RoomID          string
+	BoosterUID      string // empty string for non-members
+	BoostID         string
+	TTLMs           int64
+	MaxParticipants int
+	MaxEvents       int
+}
+
+// ApplyBoostResult is returned after a boost is successfully applied.
+type ApplyBoostResult struct {
+	Eid          int64
+	NewExpiresAt int64 // unix ms
+	NewMaxParts  int
+	NewMaxEvents int
+}
+
+// Coupon represents an issued coupon that can be redeemed on any room.
+type Coupon struct {
+	Code            string
+	BoostID         string
+	BoostName       string
+	TTLMs           int64
+	MaxParticipants int
+	MaxEvents       int
+	OriginalOrderID string
+	Status          string // "unused" | "used"
+	CreatedAt       int64  // unix ms
+	UsedAt          int64  // unix ms; 0 if unused
+	UsedForRoomID   string
+}
+
+// Order represents a payment order (used by webhooks and order-status polling).
+type Order struct {
+	OrderID    string
+	RoomID     string
+	BoostID    string
+	UID        string
+	Provider   string
+	Status     string // "pending" | "completed" | "room_expired"
+	CouponCode string // set when status == "room_expired"
+	AmountVND  int64
+	CreatedAt  int64 // unix ms
 }

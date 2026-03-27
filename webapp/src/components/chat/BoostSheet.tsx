@@ -1,43 +1,199 @@
+import { useState } from "react";
 import { BottomSheet } from "../shared/BottomSheet";
 import { BoostOptionCard } from "../shared/BoostOptionCard";
+import { SepayQRModal } from "../shared/SepayQRModal";
 import { useBoostOptions } from "../../hooks/useBoostOptions";
 import { Spinner } from "../shared/Spinner";
-import type { BoostOption } from "../../lib/api";
+import { getUnusedCoupons, removeCoupon, saveCoupon, detectPaymentProvider } from "../../lib/payment";
+import { redeemCoupon, initiatePayment, ApiError } from "../../lib/api";
+import type { BoostOption, CouponData, InitiatePaymentResponse } from "../../lib/api";
+import type { StoredCoupon } from "../../lib/payment";
+import type { RoomService } from "../../services/RoomService";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   onSelect: (option: BoostOption) => void;
+  roomId: string;
+  session: RoomService | null;
 }
 
-export function BoostSheet({ open, onClose, onSelect }: Props) {
+function formatTtl(ms: number): string {
+  const hours = ms / (1000 * 60 * 60);
+  if (hours < 24) return `${Math.round(hours)}h`;
+  return `${Math.round(hours / 24)}d`;
+}
+
+export function BoostSheet({ open, onClose, onSelect, roomId, session }: Props) {
   const { options, loading, error } = useBoostOptions();
+  const [coupons, setCoupons] = useState<StoredCoupon[]>(() => getUnusedCoupons());
+  const [redeemingCode, setRedeemingCode] = useState<string | null>(null);
+  const [redeemError, setRedeemError] = useState<string | null>(null);
+  const [initiating, setInitiating] = useState(false);
+  const [initiateError, setInitiateError] = useState<string | null>(null);
+  const [qrData, setQrData] = useState<Extract<InitiatePaymentResponse, { provider: "sepay" }> | null>(null);
+  const [expiredMsg, setExpiredMsg] = useState<string | null>(null);
+
+  async function handleApplyCoupon(coupon: StoredCoupon) {
+    if (!session || redeemingCode) return;
+    setRedeemingCode(coupon.code);
+    setRedeemError(null);
+    try {
+      const token = await session.makeToken(session.userId);
+      await redeemCoupon(roomId, coupon.code, token);
+      removeCoupon(coupon.code);
+      setCoupons((prev) => prev.filter((c) => c.code !== coupon.code));
+      onClose();
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.code : "Failed to apply coupon";
+      setRedeemError(msg);
+      setRedeemingCode(null);
+    }
+  }
+
+  async function handleBoostSelect(opt: BoostOption) {
+    if (!session || initiating) return;
+    setInitiating(true);
+    setInitiateError(null);
+    try {
+      const provider = detectPaymentProvider();
+      const token = await session.makeToken(session.userId);
+      const result = await initiatePayment({ roomId, boostId: opt.id, provider }, token);
+
+      if (result.provider === "sepay") {
+        setQrData(result);
+      } else {
+        // Polar: redirect same tab
+        window.location.href = result.checkoutUrl;
+      }
+
+      // Also notify the parent in case it needs to track selection
+      onSelect(opt);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.code : "Failed to start payment";
+      setInitiateError(msg);
+    } finally {
+      setInitiating(false);
+    }
+  }
+
+  function handleQRCompleted() {
+    setQrData(null);
+    onClose();
+    // WS room:boosted event will update the room UI
+  }
+
+  function handleQRRoomExpired(coupon: CouponData | undefined) {
+    setQrData(null);
+    if (coupon) {
+      saveCoupon(coupon);
+      setCoupons(getUnusedCoupons());
+      setExpiredMsg("Room expired — coupon saved to your wallet");
+    }
+    onClose();
+  }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="Boost this room">
-      <p className="text-warm-white/50 text-sm mb-5">
-        Boosts stack additively on the current expiry time and raise participant limits.
-      </p>
+    <>
+      <BottomSheet open={open} onClose={onClose} title="Boost this room">
+        <p className="text-warm-white/50 text-sm mb-5">
+          Boosts stack additively on the current expiry time and raise participant limits.
+        </p>
 
-      {loading && (
-        <div className="flex justify-center py-8"><Spinner /></div>
-      )}
+        {coupons.length > 0 && (
+          <div className="mb-6">
+            <p className="text-[10px] font-semibold text-warm-white/25 uppercase tracking-[0.15em] mb-3">
+              Your coupons
+            </p>
+            <div className="flex flex-col gap-2">
+              {coupons.map((coupon) => (
+                <div
+                  key={coupon.code}
+                  className="rounded-2xl p-4"
+                  style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <span className="font-display font-bold text-warm-white text-sm">{coupon.boostName}</span>
+                    <span className="text-xs text-warm-white/30">
+                      Expires {new Date(coupon.expiresAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {[
+                      `+${formatTtl(coupon.ttlMs)}`,
+                      `${coupon.maxParticipants} members`,
+                      `${coupon.maxEvents} events`,
+                    ].map((tag) => (
+                      <span key={tag} className="text-xs bg-warm-white/8 text-warm-white/40 rounded-full px-2.5 py-1">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => void handleApplyCoupon(coupon)}
+                    disabled={!!redeemingCode || initiating}
+                    className="w-full rounded-xl py-2.5 text-sm font-semibold text-obsidian transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ background: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)" }}
+                  >
+                    {redeemingCode === coupon.code ? "Applying…" : "Apply to this room"}
+                  </button>
+                </div>
+              ))}
+            </div>
+            {redeemError && (
+              <p className="text-crimson text-xs mt-2">{redeemError}</p>
+            )}
+            <div className="h-px bg-warm-white/8 my-5" />
+          </div>
+        )}
 
-      {error && (
-        <p className="text-crimson text-sm text-center py-4">Failed to load boost options</p>
-      )}
+        {expiredMsg && (
+          <p className="text-amber text-xs text-center mb-4">{expiredMsg}</p>
+        )}
 
-      {!loading && !error && options.length === 0 && (
-        <p className="text-warm-white/40 text-sm text-center py-4">No boost options available</p>
-      )}
+        {loading && (
+          <div className="flex justify-center py-8"><Spinner /></div>
+        )}
 
-      {!loading && !error && options.length > 0 && (
-        <div className="flex flex-col gap-3">
-          {options.map((opt) => (
-            <BoostOptionCard key={opt.id} option={opt} onSelect={onSelect} />
-          ))}
-        </div>
+        {error && (
+          <p className="text-crimson text-sm text-center py-4">Failed to load boost options</p>
+        )}
+
+        {!loading && !error && options.length === 0 && (
+          <p className="text-warm-white/40 text-sm text-center py-4">No boost options available</p>
+        )}
+
+        {!loading && !error && options.length > 0 && (
+          <div className="flex flex-col gap-3">
+            {options.map((opt) => (
+              <BoostOptionCard
+                key={opt.id}
+                option={opt}
+                onSelect={(o) => { void handleBoostSelect(o); }}
+              />
+            ))}
+            {initiating && (
+              <div className="flex justify-center py-2"><Spinner size={20} /></div>
+            )}
+            {initiateError && (
+              <p className="text-crimson text-xs text-center mt-1">{initiateError}</p>
+            )}
+          </div>
+        )}
+      </BottomSheet>
+
+      {qrData && (
+        <SepayQRModal
+          open={!!qrData}
+          qrUrl={qrData.qrUrl}
+          orderId={qrData.orderId}
+          amount={qrData.amount}
+          expiresAt={qrData.expiresAt}
+          onClose={() => setQrData(null)}
+          onCompleted={handleQRCompleted}
+          onRoomExpired={handleQRRoomExpired}
+        />
       )}
-    </BottomSheet>
+    </>
   );
 }

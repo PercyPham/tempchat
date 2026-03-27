@@ -13,6 +13,7 @@ import (
 func Load() {
 	loadAppConfig()
 	loadRedisConfig()
+	loadPaymentConfig()
 
 	hasConfigLoaded = true
 }

@@ -5,12 +5,12 @@ package boostoptions
 import "time"
 
 // Pricing holds the authoritative amounts for each supported currency.
-// USDCents is used by Paddle; VND is used by SePay.
-// PaddlePriceID is backend-only and never exposed in API responses.
+// USDCents is used by Polar; VND is used by SePay.
+// PolarProductPriceID is backend-only and never exposed in API responses.
 type Pricing struct {
-	USDCents      int    // e.g. 500 = $5.00
-	VND           int64  // e.g. 120000 = 120.000 ₫
-	PaddlePriceID string // Paddle price ID, e.g. "pri_01abc..."
+	USDCents           int    // e.g. 500 = $5.00
+	VND                int64  // e.g. 120000 = 120.000 ₫
+	PolarProductPriceID string // Polar product price ID, e.g. "pp_01abc..."
 }
 
 // BoostOption describes a purchasable room upgrade.
@@ -33,7 +33,7 @@ var options = []BoostOption{
 		Pricing: Pricing{
 			USDCents:      500,
 			VND:           20000,
-			PaddlePriceID: "",
+			PolarProductPriceID: "",
 		},
 	},
 	{
@@ -45,9 +45,34 @@ var options = []BoostOption{
 		Pricing: Pricing{
 			USDCents:      1000,
 			VND:           50000,
-			PaddlePriceID: "",
+			PolarProductPriceID: "",
 		},
 	},
+}
+
+// PricingConfig holds the env-loaded pricing values passed from config at startup.
+type PricingConfig struct {
+	PolarPriceIDBoostPlus string
+	PolarPriceIDBoostPro  string
+	BoostPlusVND          int64
+	BoostProVND           int64
+}
+
+// Init populates runtime pricing from environment variables.
+// Must be called once after config.Load() in main.
+func Init(cfg PricingConfig) {
+	if cfg.PolarPriceIDBoostPlus != "" {
+		options[0].Pricing.PolarProductPriceID = cfg.PolarPriceIDBoostPlus
+	}
+	if cfg.BoostPlusVND > 0 {
+		options[0].Pricing.VND = cfg.BoostPlusVND
+	}
+	if cfg.PolarPriceIDBoostPro != "" {
+		options[1].Pricing.PolarProductPriceID = cfg.PolarPriceIDBoostPro
+	}
+	if cfg.BoostProVND > 0 {
+		options[1].Pricing.VND = cfg.BoostProVND
+	}
 }
 
 // GetBoostOptions returns all available boost options.
