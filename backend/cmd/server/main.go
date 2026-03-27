@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis_rate/v10"
 	"github.com/joho/godotenv"
+	"github.com/percypham/tempchat/internal/boostoptions"
 	"github.com/percypham/tempchat/internal/cleanup"
 	"github.com/percypham/tempchat/internal/common/config"
 	"github.com/percypham/tempchat/internal/handler"
@@ -24,6 +25,12 @@ import (
 func main() {
 	godotenv.Load() // .env (no-op if absent)
 	config.Load()
+	boostoptions.Init(boostoptions.PricingConfig{
+		PolarPriceIDBoostPlus: config.Payment().PolarPriceIDBoostPlus,
+		PolarPriceIDBoostPro:  config.Payment().PolarPriceIDBoostPro,
+		BoostPlusVND:          config.Payment().BoostPlusVND,
+		BoostProVND:           config.Payment().BoostProVND,
+	})
 
 	gin.SetMode(config.App().GinMode)
 
@@ -49,6 +56,12 @@ func main() {
 		middleware.IPRateLimit(rl, "rl:boost_options", redis_rate.Limit{Rate: 30, Burst: 30, Period: time.Minute}),
 		handler.GetBoostOptions(),
 	)
+	v1.GET("/orders/:orderId",
+		middleware.IPRateLimit(rl, "rl:order_status", redis_rate.Limit{Rate: 20, Burst: 5, Period: time.Minute}),
+		handler.GetOrderStatus(s),
+	)
+	v1.POST("/payments/sepay/webhook", handler.SepayWebhook(s, h))
+	v1.POST("/payments/polar/webhook", handler.PolarWebhook(s, h))
 
 	// Auth-gated endpoints
 	authed := v1.Group("", middleware.RequireAuth(s))
@@ -71,6 +84,14 @@ func main() {
 	authed.GET("/rooms/:roomId/ws",
 		middleware.IPRateLimit(rl, "rl:ws_upgrade", redis_rate.Limit{Rate: 15, Burst: 5, Period: time.Minute}),
 		handler.WsHandler(s, h),
+	)
+	authed.POST("/rooms/:roomId/redeem-coupon",
+		middleware.IPRateLimit(rl, "rl:coupon_redeem", redis_rate.Limit{Rate: 10, Burst: 3, Period: time.Minute}),
+		handler.RedeemCoupon(s, h),
+	)
+	authed.POST("/payments/initiate",
+		middleware.IPRateLimit(rl, "rl:payment_initiate", redis_rate.Limit{Rate: 10, Burst: 5, Period: time.Minute}),
+		handler.InitiatePayment(s),
 	)
 
 	workerCtx, cancelWorkers := context.WithCancel(context.Background())

@@ -127,10 +127,11 @@ export async function leaveRoom(roomId: string, token: string): Promise<void> {
 export interface BoostOption {
   id: string;
   name: string;
-  price: string;
   ttlMs: number;
   maxParticipants: number;
   maxEvents: number;
+  priceUsdCents: number;
+  priceVnd: number;
 }
 
 export async function getBoostOptions(): Promise<BoostOption[]> {
@@ -140,4 +141,65 @@ export async function getBoostOptions(): Promise<BoostOption[]> {
     throw new ApiError(res.status, body.error ?? "unknown");
   }
   return res.json();
+}
+
+export interface CouponData {
+  code: string;
+  boostName: string;
+  ttlMs: number;
+  maxParticipants: number;
+  maxEvents: number;
+  expiresAt: number; // unix ms
+}
+
+export type OrderStatusResponse =
+  | { status: "pending" }
+  | { status: "completed" }
+  | { status: "room_expired"; coupon?: CouponData };
+
+export async function getOrderStatus(orderId: string): Promise<OrderStatusResponse> {
+  const res = await fetch(`${API_URL}/v1/orders/${orderId}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "unknown" }));
+    throw new ApiError(res.status, body.error ?? "unknown");
+  }
+  return res.json();
+}
+
+export type InitiatePaymentResponse =
+  | { provider: "sepay"; orderId: string; qrUrl: string; amount: number; currency: string; expiresAt: number }
+  | { provider: "polar"; orderId: string; checkoutUrl: string };
+
+export async function initiatePayment(
+  params: { roomId: string; boostId: string; provider: "sepay" | "polar" },
+  token: string,
+): Promise<InitiatePaymentResponse> {
+  const res = await fetch(`${API_URL}/v1/payments/initiate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-TempChat-Auth": token,
+    },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "unknown" }));
+    throw new ApiError(res.status, body.error ?? "unknown");
+  }
+  return res.json();
+}
+
+export async function redeemCoupon(roomId: string, couponCode: string, token: string): Promise<void> {
+  const res = await fetch(`${API_URL}/v1/rooms/${roomId}/redeem-coupon`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-TempChat-Auth": token,
+    },
+    body: JSON.stringify({ couponCode }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "unknown" }));
+    throw new ApiError(res.status, body.error ?? "unknown");
+  }
 }

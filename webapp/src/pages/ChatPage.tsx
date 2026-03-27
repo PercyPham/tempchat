@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { hotel, hotelActions } from "../context/HotelContext";
 import { useCountdown } from "../hooks/useCountdown";
 import { useNotifications } from "../hooks/useNotifications";
@@ -7,6 +7,8 @@ import { useWebSocket, type WSEventData } from "../hooks/useWebSocket";
 import { decrypt, encrypt } from "../lib/crypto";
 import { buildDisplayNames } from "../lib/names";
 import { getLastSeenEid, setLastSeenEid } from "../lib/lastSeen";
+import { saveCoupon } from "../lib/payment";
+import { getOrderStatus } from "../lib/api";
 import { ChatHeader } from "../components/chat/ChatHeader";
 import { MessageFeed } from "../components/chat/MessageFeed";
 import { MessageInput } from "../components/chat/MessageInput";
@@ -31,6 +33,7 @@ export interface PlainMessage {
 export function ChatPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [session, setSession] = useState<RoomService | null>(null);
   const [roomInfo, setRoomInfo] = useState<PlainRoomInfo | null>(null);
   const [messages, setMessages] = useState<PlainMessage[]>([]);
@@ -42,7 +45,7 @@ export function ChatPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [boostSheetOpen, setBoostSheetOpen] = useState(false);
 
-  // Redirect if no session
+  // Redirect if no session — but preserve ?orderId= for non-member Polar return
   useEffect(() => {
     if (!roomId) {
       navigate("/", { replace: true });
@@ -50,11 +53,41 @@ export function ChatPage() {
     }
     const s = hotel.getSession(roomId);
     if (!s) {
-      navigate("/", { replace: true });
+      // Non-member returning from Polar checkout: forward to JoinPage with orderId
+      const orderId = searchParams.get("orderId");
+      if (orderId) {
+        navigate(`/join/${roomId}?orderId=${orderId}`, { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
       return;
     }
     setSession(s);
-  }, [roomId, navigate]);
+  }, [roomId, navigate, searchParams]);
+
+  // Poll order status if returning from Polar checkout
+  useEffect(() => {
+    const orderId = searchParams.get("orderId");
+    if (!orderId || !session) return;
+
+    const interval = setInterval(() => {
+      getOrderStatus(orderId)
+        .then((status) => {
+          if (status.status === "pending") return;
+          clearInterval(interval);
+          // Remove orderId from URL
+          setSearchParams((prev) => { prev.delete("orderId"); return prev; }, { replace: true });
+          if (status.status === "room_expired" && status.coupon) {
+            saveCoupon(status.coupon);
+            setBoostSheetOpen(true); // show wallet with the new coupon
+          }
+          // On completed: WS room:boosted event already updated room info
+        })
+        .catch(() => {});
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [searchParams, session, setSearchParams]);
 
   // Load room info + initial events
   useEffect(() => {
@@ -325,10 +358,9 @@ export function ChatPage() {
       <BoostSheet
         open={boostSheetOpen}
         onClose={() => setBoostSheetOpen(false)}
-        onSelect={(_opt: BoostOption) => {
-          setBoostSheetOpen(false);
-          alert("Boost payment coming soon!");
-        }}
+        onSelect={(_opt: BoostOption) => { /* payment initiated inside BoostSheet */ }}
+        roomId={roomId!}
+        session={session}
       />
     </div>
   );

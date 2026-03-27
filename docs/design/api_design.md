@@ -105,36 +105,47 @@ All authenticated requests (REST and WebSocket) must include the `X-TempChat-Aut
   ```
   [
     {
-      "id": "boost_abc123",
+      "id": "boost_plus",
       "name": "Plus Boost",
       "ttlMs": 86400000,
       "maxParticipants": 10,
       "maxEvents": 100,
-      "price": "$2.99"
+      "priceUsdCents": 500,
+      "priceVnd": 20000
     },
     {
-      "id": "boost_def456",
+      "id": "boost_pro",
       "name": "Pro Boost",
       "ttlMs": 604800000,
       "maxParticipants": 50,
-      "maxEvents": 100,
-      "price": "$9.99"
+      "maxEvents": 200,
+      "priceUsdCents": 1000,
+      "priceVnd": 50000
     }
   ]
   ```
 
-### **2.6 Boost (Payment-Triggered)**
+### **2.6 Boost & Payment Endpoints**
 
-Room boosts are applied via payment webhook callbacks (SePay / Paddle). The payment flow and webhook endpoint design are TBD. Once payment is confirmed, the server runs the atomic Lua boost script and broadcasts a `room:boosted` WebSocket event to all connected clients.
+Room boosts are purchased via a two-provider payment system (SePay for VND, Polar for USD). Once payment is confirmed, the server runs the atomic Lua boost script and broadcasts a `room:boosted` WebSocket event to all connected clients.
 
 Non-members boosting from the "Room Full" screen authenticate with `uid: null` (same pattern as the initial join request), using the `privateKey` from the URL hash.
+
+**Payment endpoints** (full spec in [payment_design.md](payment_design.md)):
+- `POST /v1/payments/initiate` — create a pending order, returns provider-specific checkout info
+- `POST /v1/payments/sepay/webhook` — SePay bank transfer callback
+- `POST /v1/payments/polar/webhook` — Polar `order.paid` callback
+
+**Order status & coupon endpoints** (full spec in [features/coupon_design.md](features/coupon_design.md)):
+- `GET /v1/orders/:orderId` — poll for payment confirmation; returns coupon data if room expired
+- `POST /v1/rooms/:roomId/redeem-coupon` — apply a coupon to an existing room (coupon code in request body)
 
 ### **2.7 Fetch Events**
 
 - **Endpoint:** `GET /v1/rooms/:roomId/events?afterEid=142`
 - **Header:** Requires `X-TempChat-Auth`.
 - **Params:** - `afterEid` (Optional): Integer. Returns events with `eid > afterEid`.
-- **Note on Buffer Miss:** Since the event log is capped (50 free / 100 plus / 100 pro), requested eids older than the current buffer will not be returned. The client should gracefully handle gaps if the earliest returned `eid` is still greater than the expected `afterEid`.
+- **Note on Buffer Miss:** Since the event log is capped (50 free / 100 plus / 200 pro), requested eids older than the current buffer will not be returned. The client should gracefully handle gaps if the earliest returned `eid` is still greater than the expected `afterEid`.
 - **Response:**
   ```
   [
@@ -177,6 +188,9 @@ On limit exceeded, REST endpoints return `429 Too Many Requests` with a `Retry-A
 | `DELETE /v1/rooms/:roomId/members/me` | `rl:leave` | 5 | 3 | 1 min |
 | `GET /v1/rooms/:roomId/events` | `rl:events` | 20 | 10 | 1 min |
 | `GET /v1/rooms/:roomId/ws` (upgrade) | `rl:ws_upgrade` | 15 | 5 | 1 min |
+| `POST /v1/payments/initiate` | `rl:payment_initiate` | 10 | 5 | 1 min |
+| `GET /v1/orders/:orderId` | `rl:order_status` | 20 | 5 | 1 min |
+| `POST /v1/rooms/:roomId/redeem-coupon` | `rl:coupon_redeem` | 10 | 3 | 1 min |
 | `GET /health` | — | none | — | — |
 
 ### **4.2 WebSocket Message Rate Limit**

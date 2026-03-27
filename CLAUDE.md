@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TempChat is a zero-knowledge, short-lived encrypted chat PWA. Users create ephemeral rooms, invite others via QR code, and all messages are encrypted client-side (AES-GCM). Rooms auto-expire based on tier (Free 1h / Plus Boost 24h / Pro Boost 7d).
+TempChat is a zero-knowledge, short-lived encrypted chat PWA. Users create ephemeral rooms, invite others via QR code, and all messages are encrypted client-side (AES-GCM). Rooms auto-expire based on tier (Free 3h / Plus Boost 24h / Pro Boost 7d).
 
 ## Repo Structure
 
@@ -46,9 +46,10 @@ make deploy-site  # Deploy marketing site to Firebase Hosting
 
 React + Vite + TypeScript PWA. All crypto runs client-side:
 
-- Room access key derived via **PBKDF2-HMAC-SHA-512** (roomId + passphrase → roomAccessKey)
-- Messages encrypted with **AES-GCM** using the roomAccessKey
-- Request signing uses **HMAC-SHA-256**: `X-TempChat-Auth: Base64(claims).HMAC-SHA-256(claims, roomAccessKey)`
+- **ECDSA P-384** key pair generated at room creation; `privateKey` embedded in URL hash, `publicKey` sent to server once
+- AES-256 encryption key derived deterministically from `privateKey` via **HKDF-SHA-384** (zero salt, info `"aes-encryption-layer"`)
+- Messages/names encrypted with **AES-GCM** using the derived AES-256 key
+- Request signing: `X-TempChat-Auth: base64url(Claims JSON).base64url(ECDSA-P384-Sign(Claims, privateKey))`
 
 ### Backend (backend)
 

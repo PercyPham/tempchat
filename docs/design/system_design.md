@@ -65,7 +65,7 @@ To prevent replay attacks and unauthorized access, TempChat uses a signed-claim 
 ### **4.2 Backend (Go + Gin + coder/websocket)**
 
 - **Room Management:** Handles `roomId` generation and expiry logic.
-- **Boost Processing:** Applied via payment webhook (SePay / Paddle). Broadcasts a `room:boosted` WebSocket event to all connected clients. See [`redis_design.md` — Boost Strategy](redis_design.md#boost-strategy) for the atomic Lua implementation.
+- **Boost Processing:** Applied via payment webhook (SePay / Polar). Broadcasts a `room:boosted` WebSocket event to all connected clients. See [`redis_design.md` — Boost Strategy](redis_design.md#boost-strategy) for the atomic Lua implementation.
 - **Message Ordering:** Uses an atomic Redis `INCR` on `room:{roomId}:event_seq` to assign a monotonically increasing `eid` to every incoming verified event.
 - **Access Control:** Rejects join requests if the member registry is at capacity.
   - **Middleware:** Validates every incoming message/request by checking the `authToken` signature and timestamp window.

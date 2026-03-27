@@ -8,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/percypham/tempchat/internal/appctx"
 	"github.com/percypham/tempchat/internal/auth"
+	"github.com/percypham/tempchat/internal/boostoptions"
 	"github.com/percypham/tempchat/internal/common/config"
 	"github.com/percypham/tempchat/internal/handler"
 	"github.com/percypham/tempchat/internal/hub"
@@ -18,6 +19,12 @@ import (
 func main() {
 	godotenv.Load(".env.test")
 	config.Load()
+	boostoptions.Init(boostoptions.PricingConfig{
+		PolarPriceIDBoostPlus: config.Payment().PolarPriceIDBoostPlus,
+		PolarPriceIDBoostPro:  config.Payment().PolarPriceIDBoostPro,
+		BoostPlusVND:          config.Payment().BoostPlusVND,
+		BoostProVND:           config.Payment().BoostProVND,
+	})
 	gin.SetMode(gin.TestMode)
 
 	rdb := storeredis.NewClient(config.Redis().Addr)
@@ -32,6 +39,10 @@ func main() {
 	})
 	v1.POST("/rooms", handler.CreateRoom(s))
 	v1.POST("/test/echo-claims", echoClaimsHandler)
+	v1.POST("/test/coupons", handler.CreateTestCoupon(s))
+	v1.GET("/orders/:orderId", handler.GetOrderStatus(s))
+	v1.POST("/payments/sepay/webhook", handler.SepayWebhook(s, h))
+	v1.POST("/payments/polar/webhook", handler.PolarWebhook(s, h))
 
 	authed := v1.Group("", middleware.RequireAuth(s))
 	authed.GET("/rooms/:roomId", handler.GetRoom(s))
@@ -39,6 +50,8 @@ func main() {
 	authed.DELETE("/rooms/:roomId/members/me", handler.LeaveRoom(s, h))
 	authed.GET("/rooms/:roomId/events", handler.GetEvents(s))
 	authed.GET("/rooms/:roomId/ws", handler.WsHandler(s, h))
+	authed.POST("/rooms/:roomId/redeem-coupon", handler.RedeemCoupon(s, h))
+	authed.POST("/payments/initiate", handler.InitiatePayment(s))
 
 	addr := ":" + config.App().Port
 	log.Printf("Test server starting on %s", addr)
