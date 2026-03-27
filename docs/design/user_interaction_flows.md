@@ -83,7 +83,7 @@ This document defines the user journey and interface requirements for TempChat, 
 ### **5.1 In-Room Boost (Member)**
 
 - **Trigger**: Tapping the **Floating Status Pill** or the "Boost Room" button in the **Room Detail** overlay.
-- **Flow**: Bottom Sheet shows boost options (fetched from `GET /v1/boost-options`) → user selects and pays (SePay / Paddle) → payment webhook confirms → server runs atomic boost script → `room:boosted` broadcast → pill timer and chat feed update for all members.
+- **Flow**: Bottom Sheet shows boost options (fetched from `GET /v1/boost-options`) → user selects and pays (SePay / Polar) → payment webhook confirms → server runs atomic boost script → `room:boosted` broadcast → pill timer and chat feed update for all members.
 
 ### **5.2 Out-of-Room Boost (Non-Member Entry Boost)**
 
