@@ -17,7 +17,26 @@
       "Bash(make typecheck-wa:*)",
       "Bash(make test-wa:*)",
       "Bash(ls -la /Users/percypham/Projects/tempchat-spec/webapp/*.*)",
-      "Bash(go test:*)"
+      "Bash(go test:*)",
+      "WebFetch(domain:developer.sepay.vn)",
+      "WebSearch",
+      "WebFetch(domain:docs.sepay.vn)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -s http://localhost:8080/health)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s http://localhost:8080/v1/rooms)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_network_requests",
+      "mcp__playwright__browser_evaluate"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "playwright"
+  ]
 }
