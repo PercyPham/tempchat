@@ -1,0 +1,1156 @@
+/* ─── TempChat Marketing Site — Shared Styles ─────────────────────────────
+   Brand tokens mirror webapp/src/index.css for visual consistency.
+   Dark mode is default; .light class on <html> activates light overrides.
+   ──────────────────────────────────────────────────────────────────────── */
+
+@import url("https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@300;400;500;600&display=swap");
+
+/* ─── 1. CSS Custom Properties ─────────────────────────────────────────── */
+
+/* Dark mode (default) */
+:root {
+  --bg: #0d0f14;
+  --bg-2: #111827;
+  --surface: #1c2333;
+  --surface-2: #232d42;
+  --text: #f9fafb;
+  --text-muted: rgba(249, 250, 251, 0.5);
+  --text-subtle: rgba(249, 250, 251, 0.35);
+  --border: rgba(255, 255, 255, 0.07);
+  --amber: #f59e0b;
+  --amber-dark: #d97706;
+  --amber-glow: rgba(245, 158, 11, 0.18);
+  --amber-rim: rgba(245, 158, 11, 0.25);
+  --card-bg: rgba(28, 35, 51, 1);
+  --card-border: rgba(255, 255, 255, 0.07);
+  --noise-opacity: 0.038;
+  --nav-bg: rgba(13, 15, 20, 0.88);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+  --input-bg: rgba(17, 24, 39, 0.8);
+  --code-bg: rgba(17, 24, 39, 0.95);
+}
+
+/* Light mode overrides */
+html.light {
+  --bg: #f6f1e8;
+  --bg-2: #ede7d8;
+  --surface: #e4ddd0;
+  --surface-2: #dad4c4;
+  --text: #1a140d;
+  --text-muted: rgba(26, 20, 13, 0.55);
+  --text-subtle: rgba(26, 20, 13, 0.38);
+  --border: rgba(26, 20, 13, 0.08);
+  --amber: #d97706;
+  --amber-dark: #b45309;
+  --amber-glow: rgba(245, 158, 11, 0.1);
+  --amber-rim: rgba(245, 158, 11, 0.2);
+  --card-bg: rgba(228, 221, 208, 1);
+  --card-border: rgba(26, 20, 13, 0.08);
+  --noise-opacity: 0.022;
+  --nav-bg: rgba(237, 231, 216, 0.88);
+  --shadow-lg: 0 20px 60px rgba(26, 20, 13, 0.12);
+  --input-bg: rgba(228, 221, 208, 0.7);
+  --code-bg: rgba(26, 20, 13, 0.06);
+}
+
+/* ─── 2. Reset & Base ──────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: "Outfit", sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+  min-height: 100vh;
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
+}
+
+/* ─── 3. Noise Grain Overlay (matches webapp) ──────────────────────────── */
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: var(--noise-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+/* ─── 4. Typography ────────────────────────────────────────────────────── */
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: "Syne", sans-serif;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+}
+h2 {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+}
+h3 {
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+}
+
+p {
+  color: var(--text-muted);
+}
+
+a {
+  color: var(--amber);
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+code,
+pre {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-size: 0.875em;
+}
+
+/* ─── 5. Layout ────────────────────────────────────────────────────────── */
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.section {
+  padding: 5rem 0;
+}
+
+.section-label {
+  font-family: "Outfit", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 0.75rem;
+}
+
+.section-heading {
+  margin-bottom: 1rem;
+}
+
+.section-sub {
+  font-size: 1.05rem;
+  max-width: 560px;
+  margin-bottom: 3rem;
+}
+
+/* ─── 6. Navigation ────────────────────────────────────────────────────── */
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: var(--nav-bg);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.25s;
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+}
+
+.nav-logo {
+  font-family: "Syne", sans-serif;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  letter-spacing: -0.03em;
+}
+
+.nav-logo .logo-spark {
+  color: var(--amber);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ─── 7. Buttons ───────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  font-family: "Outfit", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  border: none;
+  text-decoration: none;
+}
+
+/* Primary — amber CTA */
+.btn-primary {
+  background: var(--amber);
+  color: #0d0f14;
+  font-weight: 600;
+  box-shadow: 0 0 0 0 var(--amber-rim);
+  animation: ember-pulse 2.8s ease-in-out infinite;
+}
+
+.btn-primary:hover {
+  background: var(--amber-dark);
+  opacity: 1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px var(--amber-glow);
+}
+
+/* Light mode: dark amber bg — use white text for contrast */
+html.light .btn-primary {
+  color: #ffffff;
+}
+
+/* Ghost — outlined */
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover {
+  color: var(--text);
+  border-color: rgba(245, 158, 11, 0.3);
+  background: var(--amber-glow);
+  opacity: 1;
+}
+
+/* Large CTA variant */
+.btn-lg {
+  padding: 0.85rem 2rem;
+  font-size: 1.05rem;
+  border-radius: 10px;
+}
+
+/* Theme toggle icon button */
+.btn-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.btn-toggle:hover {
+  color: var(--text);
+  border-color: var(--amber-rim);
+  background: var(--amber-glow);
+}
+
+/* Show/hide sun or moon icon based on theme */
+.icon-sun {
+  display: none;
+}
+.icon-moon {
+  display: block;
+}
+html.light .icon-sun {
+  display: block;
+}
+html.light .icon-moon {
+  display: none;
+}
+
+/* ─── 8. Hero Section ──────────────────────────────────────────────────── */
+
+.hero {
+  padding: 7rem 0 5rem;
+  text-align: center;
+  position: relative;
+}
+
+/* Ambient amber glow behind hero */
+.hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(700px, 100vw);
+  height: 400px;
+  background: radial-gradient(ellipse at top, rgba(245, 158, 11, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.85rem;
+  background: var(--amber-glow);
+  border: 1px solid var(--amber-rim);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--amber);
+  margin-bottom: 1.75rem;
+  letter-spacing: 0.04em;
+}
+
+.hero h1 {
+  max-width: 780px;
+  margin: 0 auto 1.25rem;
+}
+
+.hero h1 .highlight {
+  color: var(--amber);
+}
+
+.hero-sub {
+  font-size: 1.15rem;
+  max-width: 520px;
+  margin: 0 auto 2.5rem;
+  color: var(--text-muted);
+}
+
+.hero-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.hero-checklist {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem 1.75rem;
+  list-style: none;
+}
+
+.hero-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: var(--text-subtle);
+}
+
+.hero-checklist li::before {
+  content: "✓";
+  color: var(--amber);
+  font-weight: 700;
+}
+
+/* ─── 9. Cards Grid ────────────────────────────────────────────────────── */
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 1.75rem;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
+}
+
+.card:hover {
+  border-color: var(--amber-rim);
+  transform: translateY(-2px);
+}
+
+.card-icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.card h3 {
+  margin-bottom: 0.5rem;
+  font-size: 1.05rem;
+}
+
+.card p {
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+/* ─── 10. Steps (How It Works) ─────────────────────────────────────────── */
+
+.steps {
+  margin-top: 3rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 2rem;
+  counter-reset: step;
+}
+
+.step {
+  position: relative;
+  padding-left: 3.5rem;
+  counter-increment: step;
+}
+
+.step::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: var(--amber-glow);
+  border: 1px solid var(--amber-rim);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Syne", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--amber);
+  display: flex;
+}
+
+/* Fallback: use pseudo-element trick for flex inside ::before */
+.step-num {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: var(--amber-glow);
+  border: 1px solid var(--amber-rim);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Syne", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--amber);
+}
+
+.step-body {
+  padding-left: 3.5rem;
+}
+
+.step-body h3 {
+  margin-bottom: 0.4rem;
+  font-size: 1.1rem;
+}
+
+.step-body p {
+  font-size: 0.9rem;
+}
+
+/* ─── 11. Security Pillars ─────────────────────────────────────────────── */
+
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.pillar {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 2rem 1.75rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle amber top rim */
+.pillar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--amber-rim), transparent);
+}
+
+.pillar-icon {
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.pillar h3 {
+  font-size: 1.05rem;
+  margin-bottom: 0.6rem;
+}
+
+.pillar p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* ─── 12. Encryption Flow Diagram ──────────────────────────────────────── */
+
+.diagram-toggle {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.diagram-toggle summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 1.75rem;
+  cursor: pointer;
+  font-family: "Syne", sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  list-style: none;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.diagram-toggle summary::-webkit-details-marker {
+  display: none;
+}
+
+.diagram-toggle summary:hover {
+  background: var(--amber-glow);
+}
+
+.summary-arrow {
+  margin-left: auto;
+  color: var(--amber);
+  font-size: 0.8rem;
+  transition: transform 0.25s;
+}
+
+.diagram-toggle[open] .summary-arrow {
+  transform: rotate(180deg);
+}
+
+.diagram-inner {
+  padding: 0 1.75rem 2rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Flow diagram */
+.flow-diagram {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 1.75rem 0 1.25rem;
+  overflow-x: auto;
+}
+
+/* Three-column layout at wide screens */
+.flow-cols {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  align-items: start;
+  gap: 0;
+}
+
+.flow-col-label {
+  font-family: "Outfit", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--amber-rim);
+  margin-bottom: 1.25rem;
+}
+
+.flow-col-sep {
+  padding-top: 1.25rem;
+}
+
+.flow-box {
+  background: var(--code-bg);
+  border: 1px solid var(--amber-rim);
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 0.78rem;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+  white-space: nowrap;
+}
+
+.flow-box .key {
+  color: var(--amber);
+}
+.flow-box .val {
+  color: var(--text-muted);
+}
+
+.flow-arrow-right {
+  display: flex;
+  align-items: center;
+  padding: 0 0.5rem;
+  color: var(--amber);
+  font-size: 1.1rem;
+  padding-top: 2.5rem;
+}
+
+.flow-arrow-down {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--amber);
+  font-size: 1rem;
+  padding: 0.2rem 0;
+}
+
+.flow-note {
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+  font-style: italic;
+  margin-top: 0.3rem;
+  padding-left: 0.1rem;
+}
+
+.flow-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
+.flow-tag-never {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.flow-tag-blind {
+  background: var(--amber-glow);
+  color: var(--amber);
+  border: 1px solid var(--amber-rim);
+}
+
+/* Responsive: stack columns on mobile */
+@media (max-width: 680px) {
+  .flow-cols {
+    grid-template-columns: 1fr;
+  }
+
+  .flow-arrow-right {
+    transform: rotate(90deg);
+    justify-content: center;
+    padding: 0.3rem 0;
+  }
+
+  .flow-col-sep {
+    padding-top: 0;
+  }
+}
+
+/* ─── 13. Tier Table ───────────────────────────────────────────────────── */
+
+.tier-table-wrap {
+  overflow-x: auto;
+  border-radius: 14px;
+  border: 1px solid var(--card-border);
+}
+
+table.tier-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.tier-table th {
+  background: var(--surface);
+  padding: 1rem 1.25rem;
+  font-family: "Syne", sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.tier-table th.col-free {
+  color: var(--text-muted);
+}
+.tier-table th.col-plus {
+  color: var(--amber);
+}
+.tier-table th.col-pro {
+  color: var(--amber);
+  position: relative;
+}
+
+.tier-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  padding: 0.15rem 0.45rem;
+  background: var(--amber-glow);
+  border: 1px solid var(--amber-rim);
+  border-radius: 4px;
+  color: var(--amber);
+  margin-left: 0.4rem;
+  font-family: "Outfit", sans-serif;
+  letter-spacing: 0.06em;
+  vertical-align: middle;
+}
+
+.tier-table td {
+  padding: 0.85rem 1.25rem;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.tier-table td:first-child {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.tier-table tr:last-child td {
+  border-bottom: none;
+}
+
+.tier-table tr:hover td {
+  background: var(--amber-glow);
+}
+
+.tier-price {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tier-cta {
+  text-align: center;
+  margin-top: 1.75rem;
+}
+
+/* ─── 14. Divider ──────────────────────────────────────────────────────── */
+
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  margin: 0;
+}
+
+/* ─── 15. Footer ───────────────────────────────────────────────────────── */
+
+.footer {
+  padding: 2.5rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.footer-logo {
+  font-family: "Syne", sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.footer-links a {
+  color: var(--text-muted);
+  transition: color 0.15s;
+}
+
+.footer-links a:hover {
+  color: var(--amber);
+  opacity: 1;
+}
+
+.footer-copy {
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+  width: 100%;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+/* ─── 16. Mid-Page CTA Banner ──────────────────────────────────────────── */
+
+.cta-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 1.75rem 2rem;
+  background: var(--amber-glow);
+  border-top: 1px solid var(--amber-rim);
+  border-bottom: 1px solid var(--amber-rim);
+  text-align: center;
+}
+
+.cta-banner p {
+  color: var(--text-muted);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.cta-banner p strong {
+  color: var(--text);
+}
+
+/* ─── 17. Comparison Callout ───────────────────────────────────────────── */
+
+.compare-callout {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  overflow: hidden;
+  margin: 2.5rem 0 2rem;
+}
+
+.compare-col {
+  padding: 2rem 1.75rem;
+}
+
+.compare-col ul {
+  list-style: none;
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.compare-col li {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  display: flex;
+  gap: 0.5rem;
+}
+
+.compare-col-bad li::before {
+  content: "✗";
+  color: rgba(239, 68, 68, 0.7);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.compare-col-good li::before {
+  content: "✓";
+  color: var(--amber);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.compare-label {
+  font-family: "Syne", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0;
+}
+
+.compare-col-bad .compare-label {
+  color: var(--text-subtle);
+}
+.compare-col-good .compare-label {
+  color: var(--amber);
+}
+
+.compare-col-good {
+  border-left: 2px solid var(--amber-rim);
+  background: var(--amber-glow);
+}
+
+.compare-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
+  font-family: "Syne", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-subtle);
+  background: var(--surface);
+}
+
+@media (max-width: 640px) {
+  .compare-callout {
+    grid-template-columns: 1fr;
+  }
+  .compare-divider {
+    padding: 0.75rem;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .compare-col-good {
+    border-left: none;
+    border-top: 2px solid var(--amber-rim);
+  }
+}
+
+/* ─── 18. FAQ ───────────────────────────────────────────────────────────── */
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  max-width: 720px;
+}
+
+.faq-item {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.faq-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  font-family: "Syne", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  list-style: none;
+  user-select: none;
+  transition: background 0.15s;
+  gap: 1rem;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary:hover {
+  background: var(--amber-glow);
+}
+
+.faq-item summary .summary-arrow {
+  color: var(--amber);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  transition: transform 0.25s;
+}
+
+.faq-item[open] summary .summary-arrow {
+  transform: rotate(180deg);
+}
+
+.faq-body {
+  padding: 0 1.25rem 1.25rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+/* ─── 19. Legal Pages ──────────────────────────────────────────────────── */
+
+.legal-header {
+  padding: 4rem 0 2.5rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 3rem;
+}
+
+.legal-header .section-label {
+  margin-bottom: 0.5rem;
+}
+
+.legal-date {
+  font-size: 0.85rem;
+  color: var(--text-subtle);
+  margin-top: 0.5rem;
+}
+
+.legal-draft-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid var(--amber-rim);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 2.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.legal-draft-notice strong {
+  color: var(--amber);
+}
+
+.legal-body {
+  max-width: 720px;
+  padding-bottom: 5rem;
+}
+
+.legal-body h2 {
+  font-size: 1.2rem;
+  margin: 2.5rem 0 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.legal-body h2:first-child {
+  margin-top: 0;
+}
+
+.legal-body p {
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.legal-body ul {
+  margin: 0.75rem 0 1rem 1.25rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.legal-body ul li {
+  margin-bottom: 0.4rem;
+}
+
+.legal-body a {
+  color: var(--amber);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ─── 20. Animations ───────────────────────────────────────────────────── */
+
+@keyframes ember-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 8px 1px rgba(245, 158, 11, 0.2),
+      0 0 20px 0px rgba(245, 158, 11, 0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 16px 3px rgba(245, 158, 11, 0.4),
+      0 0 40px 4px rgba(245, 158, 11, 0.15);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── 21. Responsive ───────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .hero {
+    padding: 4rem 0 3.5rem;
+  }
+
+  .hero-checklist {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .nav-actions .btn-ghost {
+    display: none;
+  } /* hide nav CTA, only keep toggle */
+
+  .footer-inner {
+    justify-content: center;
+    text-align: center;
+  }
+  .footer-links {
+    justify-content: center;
+  }
+}

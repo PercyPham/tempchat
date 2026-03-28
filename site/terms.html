@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms of Service — TempChat</title>
+  <meta name="description" content="TempChat Terms of Service. Learn about your rights and responsibilities when using TempChat's zero-knowledge ephemeral chat service." />
+  <link rel="canonical" href="https://tempchat.app/terms.html" />
+  <link rel="stylesheet" href="tempchat-brand-styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <script>
+    (function() {
+      var saved = localStorage.getItem('tc-theme');
+      if (saved === 'light') document.documentElement.classList.add('light');
+    })();
+  </script>
+</head>
+<body>
+
+<!-- ─── Navigation ─────────────────────────────────────────────────────── -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <a href="/" class="nav-logo">
+      <span class="logo-spark">⚡</span> TempChat
+    </a>
+    <div class="nav-actions">
+      <button class="btn-toggle" id="theme-toggle" aria-label="Toggle color theme" title="Toggle color theme">
+        <span class="icon-moon">🌙</span>
+        <span class="icon-sun">☀️</span>
+      </button>
+      <a href="https://app.tempchat.app/create" class="btn btn-primary">
+        Create a Room →
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- ─── Legal Header ───────────────────────────────────────────────────── -->
+<div class="container">
+  <div class="legal-header">
+    <p class="section-label">Legal</p>
+    <h1 style="font-size:clamp(1.8rem,3vw,2.6rem);">Terms of Service</h1>
+    <p class="legal-date">Last updated: March 2026</p>
+  </div>
+
+  <div class="legal-body">
+
+    <h2>1. Acceptance of Terms</h2>
+    <p>
+      By accessing or using TempChat (available at <a href="https://app.tempchat.app">app.tempchat.app</a> and associated domains), you agree to be bound by these Terms of Service ("Terms"). If you do not agree, do not use the service. These Terms apply to all users, including room creators, room members, and visitors to <a href="https://tempchat.app">tempchat.app</a>.
+    </p>
+
+    <h2>2. Description of Service</h2>
+    <p>
+      TempChat is a zero-knowledge, ephemeral group chat service. It allows users to create temporary, encrypted chat rooms accessible via a unique URL and QR code. Key characteristics of the service:
+    </p>
+    <ul>
+      <li>No user accounts, email addresses, or personal identifiers are required to use TempChat.</li>
+      <li>All messages and display names are encrypted client-side in the user's browser before transmission. TempChat's servers store and transmit only opaque ciphertext.</li>
+      <li>Rooms are automatically and permanently deleted upon expiry. All associated data (messages, member metadata, encryption artifacts) is purged from our servers and cannot be recovered.</li>
+      <li>The encryption key for a room is embedded in the room URL fragment and is never transmitted to TempChat's servers.</li>
+    </ul>
+
+    <h2>3. No Account Requirement</h2>
+    <p>
+      TempChat does not require you to create an account or provide any personal information to use the core service. A server-generated user identifier ("userId") is assigned upon joining a room and is stored only for the lifetime of that room. It is not linked to any real-world identity.
+    </p>
+
+    <h2>4. Acceptable Use</h2>
+    <p>You agree not to use TempChat to:</p>
+    <ul>
+      <li>Transmit, distribute, or store content that is unlawful, harmful, threatening, abusive, harassing, defamatory, or otherwise objectionable.</li>
+      <li>Violate any applicable local, national, or international law or regulation.</li>
+      <li>Transmit, distribute, or solicit child sexual abuse material (CSAM) or any other content that sexually exploits or harms minors.</li>
+      <li>Plan, facilitate, or carry out acts of violence, terrorism, or other criminal activity.</li>
+      <li>Attempt to interfere with, disrupt, or compromise the integrity or security of the service, including denial-of-service attacks, unauthorised access attempts, or reverse-engineering the server-side infrastructure.</li>
+      <li>Circumvent or attempt to circumvent the technical security controls built into TempChat, including the cryptographic signing mechanism.</li>
+      <li>Use the service in any way that violates the rights of third parties.</li>
+    </ul>
+    <p>
+      Because TempChat operates on a zero-knowledge basis, we cannot monitor the content of messages. This makes it especially important that you take personal responsibility for your use of the service. We reserve the right to terminate access or disable rooms in response to credible reports of abuse or legal demands, even where we cannot access the content itself.
+    </p>
+
+    <h2>5. Room Lifecycle and Data Retention</h2>
+    <p>
+      Free rooms are automatically deleted 3 hours after creation. Boosted rooms are deleted at the end of their boosted lifetime (up to 7 days for Pro Boost). Upon deletion:
+    </p>
+    <ul>
+      <li>All room data stored on TempChat's servers — including ciphertext messages, member identifiers, and room metadata — is permanently purged.</li>
+      <li>No backups or archives of room content are retained by TempChat after expiry.</li>
+      <li>Locally stored data (the room key, userId, and display name in your browser's <code>localStorage</code>) is your responsibility. Clearing your browser storage or manually leaving a room removes this data from your device.</li>
+    </ul>
+    <p>
+      TempChat does not guarantee any minimum uptime or room availability. Rooms may become inaccessible before their scheduled expiry due to service interruptions, infrastructure failures, or other unforeseen circumstances.
+    </p>
+
+    <h2>6. Payments and Boosts</h2>
+    <p>
+      TempChat offers optional paid "Boosts" that extend a room's lifetime and/or increase participant and message-event capacity. Boosts are:
+    </p>
+    <ul>
+      <li><strong>One-time, per-room payments.</strong> A Boost applies only to the specific room it was purchased for and is not transferable.</li>
+      <li><strong>Additive.</strong> Multiple Boosts can be applied to the same room; each extends the room's remaining time by the Boost's duration.</li>
+      <li><strong>Non-refundable.</strong> All Boost purchases are final. Because Boosts are applied immediately and consume server resources from the moment of purchase, we do not offer refunds except where required by applicable consumer protection law.</li>
+      <li><strong>Subject to expiry.</strong> A Boost extends the room's lifetime but does not prevent the room from being deleted when the extended lifetime expires.</li>
+    </ul>
+    <p>
+      Payment processing is handled by third-party providers (currently SePay and Polar). By making a payment, you also agree to the terms and privacy policies of the applicable payment processor. TempChat does not store your payment card details.
+    </p>
+    <p>
+      Boost pricing and available options may change at any time without notice. The price shown at the time of purchase is the price you pay.
+    </p>
+
+    <h2>7. Intellectual Property</h2>
+    <p>
+      The TempChat name, logo, and the software comprising the service are the intellectual property of the TempChat operator. You are granted a limited, non-exclusive, non-transferable licence to use the service for its intended purpose. You may not copy, modify, distribute, sell, or sublicense any part of the service or its underlying software.
+    </p>
+    <p>
+      You retain all rights to the content you create and transmit via TempChat. Because messages are encrypted end-to-end before reaching our servers, TempChat neither receives nor claims any rights over your content.
+    </p>
+
+    <h2>8. Disclaimers and Limitation of Liability</h2>
+    <p>
+      THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.
+    </p>
+    <p>
+      TEMPCHAT DOES NOT WARRANT THAT THE SERVICE WILL BE UNINTERRUPTED, ERROR-FREE, OR SECURE. WHILE THE ZERO-KNOWLEDGE ARCHITECTURE MEANS THAT TEMPCHAT CANNOT ACCESS YOUR MESSAGES, THIS DOES NOT CONSTITUTE A GUARANTEE THAT YOUR COMMUNICATIONS CANNOT BE INTERCEPTED OR COMPROMISED AT YOUR DEVICE OR NETWORK LEVEL.
+    </p>
+    <p>
+      TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, TEMPCHAT SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING LOSS OF DATA, LOSS OF REVENUE, OR LOSS OF PROFITS ARISING FROM YOUR USE OF OR INABILITY TO USE THE SERVICE.
+    </p>
+
+    <h2>9. Indemnification</h2>
+    <p>
+      You agree to indemnify and hold harmless TempChat, its operators, and affiliates from and against any claims, liabilities, damages, and expenses (including reasonable legal fees) arising from your use of the service, your violation of these Terms, or your violation of any rights of a third party.
+    </p>
+
+    <h2>10. Changes to These Terms</h2>
+    <p>
+      We may update these Terms from time to time. Changes will be posted on this page with an updated date. Your continued use of TempChat after changes are posted constitutes your acceptance of the revised Terms. If you disagree with a change, you should stop using the service.
+    </p>
+
+    <h2>11. Governing Law</h2>
+    <p>
+      These Terms are governed by the laws of the Socialist Republic of Vietnam, without regard to conflict-of-law provisions.
+    </p>
+
+    <h2>12. Contact</h2>
+    <p>
+      Questions about these Terms? Contact us at: <a href="mailto:support@tempchat.app">support@tempchat.app</a>.
+    </p>
+
+  </div><!-- .legal-body -->
+</div><!-- .container -->
+
+<!-- ─── Footer ─────────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-logo">
+        <span style="color:var(--amber)">⚡</span> TempChat
+      </div>
+      <ul class="footer-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="https://app.tempchat.app">Open App</a></li>
+        <li><a href="privacy.html">Privacy Policy</a></li>
+      </ul>
+    </div>
+    <p class="footer-copy">
+      &copy; <span id="yr"></span> TempChat. Zero-knowledge. Zero trace.
+    </p>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('yr').textContent = new Date().getFullYear();
+  var btn = document.getElementById('theme-toggle');
+  btn.addEventListener('click', function() {
+    var isLight = document.documentElement.classList.toggle('light');
+    localStorage.setItem('tc-theme', isLight ? 'light' : 'dark');
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — TempChat</title>
+  <meta name="description" content="TempChat Privacy Policy. We store only encrypted ciphertext. We cannot read your messages. Rooms auto-delete on expiry." />
+  <link rel="canonical" href="https://tempchat.app/privacy.html" />
+  <link rel="stylesheet" href="tempchat-brand-styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <script>
+    (function() {
+      var saved = localStorage.getItem('tc-theme');
+      if (saved === 'light') document.documentElement.classList.add('light');
+    })();
+  </script>
+</head>
+<body>
+
+<!-- ─── Navigation ─────────────────────────────────────────────────────── -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <a href="/" class="nav-logo">
+      <span class="logo-spark">⚡</span> TempChat
+    </a>
+    <div class="nav-actions">
+      <button class="btn-toggle" id="theme-toggle" aria-label="Toggle color theme" title="Toggle color theme">
+        <span class="icon-moon">🌙</span>
+        <span class="icon-sun">☀️</span>
+      </button>
+      <a href="https://app.tempchat.app/create" class="btn btn-primary">
+        Create a Room →
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- ─── Legal Header ───────────────────────────────────────────────────── -->
+<div class="container">
+  <div class="legal-header">
+    <p class="section-label">Legal</p>
+    <h1 style="font-size:clamp(1.8rem,3vw,2.6rem);">Privacy Policy</h1>
+    <p class="legal-date">Last updated: March 2026</p>
+  </div>
+
+  <div class="legal-body">
+
+    <h2>1. Overview</h2>
+    <p>
+      TempChat is designed from the ground up to collect as little data as possible and to ensure that the data we do handle cannot be linked to your real-world identity. This Privacy Policy explains what information is processed when you use TempChat, how it is used, and how it is deleted.
+    </p>
+    <p>
+      <strong>The short version:</strong> We cannot read your messages. We do not know who you are. Everything is deleted when the room expires.
+    </p>
+
+    <h2>2. The Zero-Knowledge Model</h2>
+    <p>
+      TempChat uses end-to-end encryption with a zero-knowledge architecture:
+    </p>
+    <ul>
+      <li>Your messages and display name are encrypted in your browser using AES-256-GCM before being transmitted to our servers.</li>
+      <li>The encryption key is derived from a private key that lives exclusively in the room URL fragment (<code>#hash</code>). URL fragments are not included in HTTP requests, so this key is never transmitted to or stored by our servers.</li>
+      <li>Our servers store and transmit only opaque ciphertext. We have no technical capability to decrypt or read the content of messages or display names.</li>
+      <li>Requests are authenticated using ECDSA P-384 signatures. The public key is stored server-side for verification purposes only — it cannot be used for decryption.</li>
+    </ul>
+
+    <h2>3. What We Collect and Why</h2>
+    <p>
+      The following categories of data are processed when you use TempChat:
+    </p>
+
+    <h3 style="font-size:1rem; margin-top:1.5rem; margin-bottom:0.5rem; color:var(--text);">3.1 Room Data (Server-Side, Temporary)</h3>
+    <ul>
+      <li><strong>Room identifier (roomId):</strong> A randomly generated, opaque identifier assigned by the server at room creation. Not linked to any personal identity.</li>
+      <li><strong>Encrypted room name:</strong> Stored as ciphertext. We cannot read it.</li>
+      <li><strong>User identifier (userId):</strong> A randomly generated, opaque identifier assigned by the server when you join a room. Not linked to any personal identity.</li>
+      <li><strong>Encrypted display name:</strong> Stored as ciphertext. We cannot read it.</li>
+      <li><strong>Encrypted messages:</strong> Stored as ciphertext in a Redis sorted set. We cannot read them.</li>
+      <li><strong>Join timestamp and event sequence number:</strong> Used to deliver messages to late-joining members. Not linked to any personal identity.</li>
+      <li><strong>ECDSA public key (JWK):</strong> Used exclusively to verify request signatures. Cannot be used for decryption.</li>
+    </ul>
+    <p>
+      All of the above data is stored in-memory in Redis with a TTL (time-to-live). It is automatically and permanently purged when the room expires. We do not persist this data to any external database or long-term storage.
+    </p>
+
+    <h3 style="font-size:1rem; margin-top:1.5rem; margin-bottom:0.5rem; color:var(--text);">3.2 Server Logs (Transient)</h3>
+    <p>
+      Like most web services, our servers generate access logs that may include IP addresses, request timestamps, HTTP method and path, and response codes. These logs:
+    </p>
+    <ul>
+      <li>Do not contain message content (which is encrypted at the client and never visible to the server).</li>
+      <li>Are retained for 30 days for operational and security purposes, then deleted.</li>
+      <li>May be used to investigate abuse, service disruptions, or security incidents.</li>
+    </ul>
+
+    <h3 style="font-size:1rem; margin-top:1.5rem; margin-bottom:0.5rem; color:var(--text);">3.3 Local Storage (Your Device Only)</h3>
+    <p>
+      TempChat stores the following data in your browser's <code>localStorage</code>:
+    </p>
+    <ul>
+      <li>Your <code>userId</code> for each active room.</li>
+      <li>Your <code>privateKey</code> (JWK) for each active room (the encryption key that never leaves your device).</li>
+      <li>Your display name (plaintext, for display purposes only).</li>
+      <li>The <code>join_eid</code> (event sequence number at the time you joined, used to replay missed messages).</li>
+      <li>Your theme preference (dark or light).</li>
+    </ul>
+    <p>
+      This data is stored locally on your device and is never transmitted to our servers (except the userId and join_eid, which are used for session continuity). You can clear it at any time by clearing your browser's site data for <code>app.tempchat.app</code>, or by using the "Leave Room" function within the app.
+    </p>
+
+    <h2>4. Payments</h2>
+    <p>
+      If you purchase a Boost, payment is processed entirely by a third-party payment provider (currently SePay and/or Polar). TempChat does not collect, store, or process your payment card details.
+    </p>
+    <p>
+      The payment provider may collect information such as your name, email address, billing details, and IP address in accordance with their own privacy policies. We encourage you to review the privacy policies of the relevant payment processor before making a purchase.
+    </p>
+    <p>
+      TempChat receives a webhook notification upon successful payment confirmation. This notification contains the <code>roomId</code> for which the Boost was purchased, the Boost type, and a transaction identifier. No personal payment information is included in the webhook payload received by TempChat.
+    </p>
+
+    <h2>5. No Personal Accounts or Email Addresses</h2>
+    <p>
+      TempChat does not require you to register an account, provide an email address, or supply any personally identifying information to use the service. If you contact us voluntarily (e.g., by email for support), any information you provide will be used only to respond to your request and will not be stored beyond what is necessary for that purpose.
+    </p>
+
+    <h2>6. Third-Party Services</h2>
+    <p>
+      TempChat uses the following third-party infrastructure:
+    </p>
+    <ul>
+      <li><strong>Google Fonts:</strong> The marketing site loads fonts (Syne, Outfit) from Google Fonts CDN. Google may log requests to their CDN, including your IP address. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>.</li>
+      <li><strong>Firebase Hosting (Google):</strong> The marketing site (<code>tempchat.app</code>) and web application (<code>app.tempchat.app</code>) are hosted on Firebase. Firebase Hosting may collect access logs. See <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase Privacy Policy</a>.</li>
+      <li><strong>Payment processors (SePay / Polar):</strong> As described in Section 4 above.</li>
+    </ul>
+    <p>
+      We do not use advertising networks, tracking pixels, analytics platforms, or other third-party data-collection tools on TempChat.
+    </p>
+
+    <h2>7. Data Deletion and Retention</h2>
+    <p>
+      TempChat is designed for automatic data deletion:
+    </p>
+    <ul>
+      <li>All room data (messages, member metadata, keys) is automatically purged from our servers when the room's TTL expires.</li>
+      <li>There is no manual deletion request process for room data — it is deleted automatically and unconditionally at expiry.</li>
+      <li>Server access logs are deleted after 30 days.</li>
+      <li>If you want to delete locally stored data (privateKey, userId, display name) before room expiry, use the "Leave Room" function in the app, or clear your browser's site data for <code>app.tempchat.app</code>.</li>
+    </ul>
+
+    <h2>8. Children's Privacy</h2>
+    <p>
+      TempChat is not directed at children under 13 (or the applicable minimum age in your jurisdiction). We do not knowingly collect personal information from children. If you believe a child has used TempChat in a way that violates this policy, please contact us.
+    </p>
+
+    <h2>9. Security</h2>
+    <p>
+      We implement technical measures to protect the integrity of the service, including ECDSA request signing, timestamp drift validation, and TLS encryption in transit. However, no system is completely secure. The zero-knowledge architecture means that even a full compromise of our servers would not expose the plaintext of your messages — the encryption key is never held by us. Nevertheless, you should be aware that the security of data on your own device is your responsibility.
+    </p>
+
+    <h2>10. Changes to This Policy</h2>
+    <p>
+      We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated date. Your continued use of TempChat after changes are posted constitutes your acceptance of the revised Policy.
+    </p>
+
+    <h2>11. Contact</h2>
+    <p>
+      Questions about this Privacy Policy or how your data is handled? Contact us at: <a href="mailto:support@tempchat.app">support@tempchat.app</a>.
+    </p>
+
+  </div><!-- .legal-body -->
+</div><!-- .container -->
+
+<!-- ─── Footer ─────────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-logo">
+        <span style="color:var(--amber)">⚡</span> TempChat
+      </div>
+      <ul class="footer-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="https://app.tempchat.app">Open App</a></li>
+        <li><a href="terms.html">Terms of Service</a></li>
+      </ul>
+    </div>
+    <p class="footer-copy">
+      &copy; <span id="yr"></span> TempChat. Zero-knowledge. Zero trace.
+    </p>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('yr').textContent = new Date().getFullYear();
+  var btn = document.getElementById('theme-toggle');
+  btn.addEventListener('click', function() {
+    var isLight = document.documentElement.classList.toggle('light');
+    localStorage.setItem('tc-theme', isLight ? 'light' : 'dark');
+  });
+</script>
+
+</body>
+</html>

@@ -35,11 +35,12 @@
       "mcp__playwright__browser_evaluate",
       "WebFetch(domain:polar.sh)",
       "Bash(gh api:*)",
-      "Bash(go run:*)"
+      "Bash(go run:*)",
+      "Bash(xargs ls:*)",
+      "Bash(find /Users/percypham/Projects/tempchat-mar -type f \\\\\\(-name *.js -o -name *.ts -o -name *.jsx -o -name *.tsx \\\\\\))",
+      "mcp__playwright__browser_take_screenshot"
     ]
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "playwright"
-  ]
+  "enabledMcpjsonServers": ["playwright"]
 }

@@ -1,6 +1,7 @@
 .PHONY: dev dev-be dev-wa dev-up dev-down dev-gui \
         build build-wa build-be \
         deploy-wa deploy-site \
+        serve-site \
         test test-be test-wa test-integration \
         typecheck typecheck-wa typecheck-be \
         help
@@ -45,6 +46,9 @@ deploy-wa:    ## Deploy webapp to Firebase Hosting (app.tempchat.app)
 
 deploy-site:  ## Deploy site to Firebase Hosting (tempchat.app)
 	firebase deploy --only hosting:site
+
+serve-site:   ## Serve marketing site locally via Firebase
+	firebase serve --only hosting:site
 
 # ── Test ──────────────────────────────────────────────────────────────────────
 

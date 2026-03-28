@@ -1,13 +1,524 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TempChat — Ephemeral Encrypted Chat</title>
-</head>
-<body>
-  <h1>TempChat</h1>
-  <p>Zero-knowledge, short-lived chat for real-world moments.</p>
-  <a href="https://app.tempchat.app">Open App</a>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TempChat — Ephemeral Encrypted Chat</title>
+    <meta
+      name="description"
+      content="Zero-knowledge group chat that vanishes after your event. Encrypted in your browser, invisible to our servers. No accounts, no app store, no traces."
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="TempChat — Chat that disappears when the moment does" />
+    <meta
+      property="og:description"
+      content="Zero-knowledge encrypted group chat for real-world moments. Scan a QR, chat, gone."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://tempchat.app" />
+
+    <!-- Canonical -->
+    <link rel="canonical" href="https://tempchat.app" />
+
+    <link rel="stylesheet" href="tempchat-brand-styles.css" />
+    <style>
+      .currency-toggle { display:flex; gap:6px; justify-content:flex-end; margin-bottom:12px; }
+      .cur-btn { padding:4px 14px; border-radius:20px; border:1px solid var(--border); background:transparent; cursor:pointer; font-size:.85rem; color:var(--fg); }
+      .cur-btn.active { background:var(--amber); color:var(--bg); border-color:var(--amber); }
+    </style>
+
+    <!-- Preconnect to Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Theme: apply saved preference before paint to avoid flash -->
+    <script>
+      (function () {
+        var saved = localStorage.getItem("tc-theme");
+        if (saved === "light") document.documentElement.classList.add("light");
+      })();
+    </script>
+  </head>
+  <body>
+    <!-- ─── Navigation ─────────────────────────────────────────────────────── -->
+    <nav class="nav">
+      <div class="container nav-inner">
+        <a href="/" class="nav-logo"> <span class="logo-spark">⚡</span> TempChat </a>
+        <div class="nav-actions">
+          <button class="btn-toggle" id="theme-toggle" aria-label="Toggle color theme" title="Toggle color theme">
+            <span class="icon-moon">🌙</span>
+            <span class="icon-sun">☀️</span>
+          </button>
+          <a href="https://app.tempchat.app/create" class="btn btn-primary"> Create a Room → </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ─── Hero ───────────────────────────────────────────────────────────── -->
+    <section class="hero section">
+      <div class="container">
+        <div class="hero-badge">✓ No account &nbsp;·&nbsp; No sign-up &nbsp;·&nbsp; Deletes itself</div>
+
+        <h1 class="animate-fade-up">Group chat for the moment —<br /><span class="highlight">gone when it's over.</span></h1>
+
+        <p class="hero-sub animate-fade-up">
+          Encrypted in your browser — our servers never see a word.
+        </p>
+
+        <div class="hero-cta animate-fade-up">
+          <a href="https://app.tempchat.app/create" class="btn btn-primary btn-lg"> ⚡ Create a Free Room </a>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ─── How It Works ──────────────────────────────────────────────────── -->
+    <section class="section">
+      <div class="container">
+        <p class="section-label">How It Works</p>
+        <h2 class="section-heading">Scan. Join. Chat — no sign-up.</h2>
+
+        <div class="steps">
+          <div class="step-item" style="position: relative; padding-left: 3.5rem">
+            <span class="step-num" style="position: absolute; left: 0; top: 0">1</span>
+            <div>
+              <h3>Create a room</h3>
+              <p style="font-size: 0.9rem; margin-top: 0.4rem">
+                Give your room a name. A unique link and QR code are generated instantly — no sign-up needed.
+              </p>
+            </div>
+          </div>
+
+          <div class="step-item" style="position: relative; padding-left: 3.5rem">
+            <span class="step-num" style="position: absolute; left: 0; top: 0">2</span>
+            <div>
+              <h3>Others join by scanning</h3>
+              <p style="font-size: 0.9rem; margin-top: 0.4rem">
+                Show the QR code or share the link. Anyone opens it in their phone browser, picks a display name, and is
+                in — no install, no account.
+              </p>
+            </div>
+          </div>
+
+          <div class="step-item" style="position: relative; padding-left: 3.5rem">
+            <span class="step-num" style="position: absolute; left: 0; top: 0">3</span>
+            <div>
+              <h3>Room vanishes on schedule</h3>
+              <p style="font-size: 0.9rem; margin-top: 0.4rem">
+                Free rooms auto-delete after 3 hours. Every message, every name, every byte — purged from our servers
+                automatically.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ─── Security — Non-Tech ────────────────────────────────────────────── -->
+    <section class="section">
+      <div class="container">
+        <p class="section-label">Security &amp; Privacy</p>
+        <h2 class="section-heading">We genuinely cannot read your messages</h2>
+        <p class="section-sub">Not "we won't" — we literally can't. Here's why.</p>
+
+        <div class="pillars">
+          <div class="pillar">
+            <span class="pillar-icon">🔐</span>
+            <h3>Encrypted before it leaves your device</h3>
+            <p>
+              Your messages are locked using AES-256 encryption directly in your browser before being transmitted. The
+              encryption key is embedded in the room link and never sent to our servers.
+            </p>
+          </div>
+
+          <div class="pillar">
+            <span class="pillar-icon">🙈</span>
+            <h3>Our servers are completely blind</h3>
+            <p>
+              We store only scrambled ciphertext. There is no master key, no admin backdoor, no way to decrypt what we
+              hold. Even a full server breach would expose nothing readable.
+            </p>
+          </div>
+
+          <div class="pillar">
+            <span class="pillar-icon">💥</span>
+            <h3>Automatic self-destruction</h3>
+            <p>
+              When a room expires, every key, message, and metadata entry is permanently purged from our servers.
+              There is no backup, no archive, no recovery.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Mid-page CTA — after Security ──────────────────────────────────── -->
+    <div class="cta-banner">
+      <p>Your conversations deserve better. <strong>Create a free room in 10 seconds.</strong></p>
+      <a href="https://app.tempchat.app/create" class="btn btn-primary">Create Free Room →</a>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- ─── Encryption Diagram — For The Curious ──────────────────────────── -->
+    <section class="section">
+      <div class="container">
+        <p class="section-label">For The Curious</p>
+        <h2 class="section-heading" style="margin-bottom: 1.5rem">The cryptographic architecture</h2>
+
+        <details class="diagram-toggle">
+          <summary>
+            <span>🔬</span>
+            <span>Expand: Full Zero-Knowledge Encryption Flow</span>
+            <span class="summary-arrow">▼</span>
+          </summary>
+
+          <div class="diagram-inner">
+            <p style="font-size: 0.9rem; margin-top: 1.25rem; margin-bottom: 1.5rem">
+              The room URL hash contains the <code>privateKey</code> — it is never parsed by the server (hashes aren't
+              sent in HTTP requests). All cryptographic operations happen entirely in the browser via the
+              <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API" target="_blank" rel="noopener"
+                >Web Crypto API</a
+              >.
+            </p>
+
+            <!-- Flow diagram — 3 columns: Browser | Key Derivation | Server -->
+            <div class="flow-diagram">
+              <div class="flow-cols">
+                <!-- Column 1: Browser -->
+                <div>
+                  <div class="flow-col-label">① Browser (Room Creator)</div>
+
+                  <div class="flow-box">
+                    <span class="key">ECDSA P-384</span><br />
+                    <span class="val">keypair generated locally</span>
+                  </div>
+
+                  <div class="flow-arrow-down">↓</div>
+
+                  <div class="flow-box">
+                    <span class="key">privateKey</span>
+                    <span class="flow-tag flow-tag-never">never leaves</span><br />
+                    <span class="val">→ embedded in URL #hash</span>
+                  </div>
+
+                  <div class="flow-arrow-down">↓</div>
+
+                  <div class="flow-box">
+                    <span class="key">publicKey</span><br />
+                    <span class="val">→ sent to server once</span><br />
+                    <span class="val">&nbsp;&nbsp;(JWK, verify-only)</span>
+                  </div>
+                </div>
+
+                <!-- Arrow right 1 -->
+                <div class="flow-arrow-right">→</div>
+
+                <!-- Column 2: Key Derivation -->
+                <div>
+                  <div class="flow-col-label">② Key Derivation (Client-Side)</div>
+
+                  <div class="flow-box">
+                    <span class="key">HKDF-SHA-384</span><br />
+                    <span class="val">salt: 16-byte zeros</span><br />
+                    <span class="val">info: "aes-encryption-layer"</span>
+                  </div>
+
+                  <div class="flow-arrow-down">↓</div>
+
+                  <div class="flow-box">
+                    <span class="key">AES-256-GCM key</span><br />
+                    <span class="val">derived deterministically</span><br />
+                    <span class="val">from privateKey — never sent</span>
+                  </div>
+
+                  <div class="flow-arrow-down">↓</div>
+
+                  <div class="flow-box">
+                    <span class="key">AES-GCM encrypt</span><br />
+                    <span class="val">plaintext → ciphertext</span><br />
+                    <span class="val">(messages, display names)</span>
+                  </div>
+
+                  <div class="flow-arrow-down">↓</div>
+
+                  <div class="flow-box">
+                    <span class="key">ECDSA P-384 sign</span><br />
+                    <span class="val">{ rid, uid, ts } claims</span><br />
+                    <span class="val">→ authToken header</span>
+                  </div>
+                </div>
+
+                <!-- Arrow right 2 -->
+                <div class="flow-arrow-right">→</div>
+
+                <!-- Column 3: Server -->
+                <div>
+                  <div class="flow-col-label">
+                    ③ Server
+                    <span class="flow-tag flow-tag-blind">BLIND</span>
+                  </div>
+
+                  <div class="flow-box">
+                    <span class="key">publicKey</span><br />
+                    <span class="val">verify ECDSA signature</span><br />
+                  </div>
+
+                  <div class="flow-arrow-down">↓</div>
+
+                  <div class="flow-box">
+                    <span class="key">stores ciphertext only</span><br />
+                    <span class="val">opaque blobs in Redis</span><br />
+                    <span class="val">TTL → auto-purged</span>
+                  </div>
+
+                  <div class="flow-arrow-down">↓</div>
+
+                  <div class="flow-box">
+                    <span class="key">returns ciphertext</span><br />
+                    <span class="val">receiver uses privateKey</span><br />
+                    <span class="val">from their URL to decrypt</span>
+                  </div>
+                </div>
+              </div>
+              <!-- .flow-cols -->
+            </div>
+            <!-- .flow-diagram -->
+
+            <p class="flow-note">
+              All crypto primitives run in the browser via <code>window.crypto.subtle</code>. The private key never
+              touches a network request — URL fragments are not transmitted by the HTTP protocol.
+            </p>
+          </div>
+          <!-- .diagram-inner -->
+        </details>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ─── Perfect For ────────────────────────────────────────────────────── -->
+    <section class="section">
+      <div class="container">
+        <p class="section-label">Use Cases</p>
+        <h2 class="section-heading">Perfect for moments that don't need a paper trail</h2>
+        <p class="section-sub">
+          From hackathons to weddings — any crowd, any occasion.
+        </p>
+
+        <div class="cards-grid">
+          <div class="card">
+            <span class="card-icon">🎤</span>
+            <h3>Conferences &amp; Workshops</h3>
+            <p>
+              Spin up a room for your session attendees in seconds. Collect feedback, share links, coordinate — then it
+              all vanishes when you're done.
+            </p>
+          </div>
+          <div class="card">
+            <span class="card-icon">💍</span>
+            <h3>Weddings &amp; Gatherings</h3>
+            <p>
+              A shared space for your guests to coordinate on the day without adding strangers to a family group chat
+              forever.
+            </p>
+          </div>
+          <div class="card">
+            <span class="card-icon">🤝</span>
+            <h3>Strangers Who Need to Connect</h3>
+            <p>
+              Hackathons, meetups, pop-up events. Get a group talking without anyone exchanging phone numbers or
+              personal accounts.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Comparison Callout ───────────────────────────────────────────── -->
+    <div class="container">
+      <div class="compare-callout">
+        <div class="compare-col compare-col-bad">
+          <p class="compare-label">WhatsApp / Telegram group</p>
+          <ul>
+            <li>Everyone must share their phone number</li>
+            <li>Chat history lives on forever (and on Meta's servers)</li>
+            <li>You're all still connected long after the event</li>
+            <li>Strangers can save your number</li>
+          </ul>
+        </div>
+        <div class="compare-divider">vs</div>
+        <div class="compare-col compare-col-good">
+          <p class="compare-label">TempChat</p>
+          <ul>
+            <li>Share a link — no number, no account, no app</li>
+            <li>Messages encrypted in your browser, deleted when room expires</li>
+            <li>Everyone disconnects automatically when it's over</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Mid-page CTA — after Use Cases ───────────────────────────────── -->
+    <div class="cta-banner">
+      <p>Share a link. Everyone's in. No one's left connected after. <strong>Try it free →</strong></p>
+      <a href="https://app.tempchat.app/create" class="btn btn-primary">Try it free →</a>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- ─── Tiers ──────────────────────────────────────────────────────────── -->
+    <section class="section">
+      <div class="container">
+        <p class="section-label">Pricing</p>
+        <h2 class="section-heading">Start free. Boost when you need more time.</h2>
+        <p class="section-sub">
+          Boosts are one-time, per-room payments that stack additively — extend a room mid-session without penalty.
+        </p>
+
+        <div class="currency-toggle">
+          <button id="cur-usd" class="cur-btn active">USD</button>
+          <button id="cur-vnd" class="cur-btn">VND</button>
+        </div>
+
+        <div class="tier-table-wrap">
+          <table class="tier-table">
+            <thead>
+              <tr>
+                <th style="width: 35%"></th>
+                <th class="col-free">Free</th>
+                <th class="col-plus">Plus Boost</th>
+                <th class="col-pro" style="background: var(--amber-glow);">Pro Boost <span class="tier-badge">BEST VALUE</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Participants</td>
+                <td>5 total</td>
+                <td>10 total</td>
+                <td>50 total</td>
+              </tr>
+              <tr>
+                <td>Room lifetime</td>
+                <td>3 hours</td>
+                <td>+24 hours</td>
+                <td>+7 days</td>
+              </tr>
+              <tr>
+                <td>Price</td>
+                <td class="tier-price" data-usd="$0" data-vnd="$0">$0</td>
+                <td class="tier-price" data-usd="$5 one-time" data-vnd="₫20.000 one-time">$5 one-time</td>
+                <td class="tier-price" style="background: var(--amber-glow);" data-usd="$10 one-time" data-vnd="₫50.000 one-time">$10 one-time</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="tier-cta">
+          <a href="https://app.tempchat.app/create" class="btn btn-primary btn-lg">
+            Start free — no account needed →
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ─── FAQ ──────────────────────────────────────────────────────────── -->
+    <section class="section">
+      <div class="container">
+        <p class="section-label">FAQ</p>
+        <h2 class="section-heading">Common questions</h2>
+
+        <div class="faq-list">
+          <details class="faq-item">
+            <summary>Is the encryption real, or just marketing?<span class="summary-arrow">▼</span></summary>
+            <div class="faq-body">
+              Real. Messages are encrypted with AES-256-GCM directly in your browser using the Web Crypto API before they're sent anywhere. The encryption key lives only in the room URL hash — it's never transmitted to our servers. We store opaque ciphertext blobs. A full breach of our servers would expose nothing readable.
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>What happens when the room expires?<span class="summary-arrow">▼</span></summary>
+            <div class="faq-body">
+              Every key, message, display name, and metadata entry is permanently purged from our servers via TTL-based expiry. There is no backup, no archive, no recovery path — by design.
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Can I extend a room that's already running?<span class="summary-arrow">▼</span></summary>
+            <div class="faq-body">
+              Yes. You can apply a Plus ($5) or Pro ($10) boost at any time — even mid-conversation. Boosts extend the expiry from the current deadline, not from now, so you never lose time you already paid for.
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>How many people can join for free?<span class="summary-arrow">▼</span></summary>
+            <div class="faq-body">
+              Up to 5 participants on the free tier. A Plus Boost raises the limit to 10; a Pro Boost raises it to 50. Boosts stack additively if you need even more capacity.
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Do people need to install an app?<span class="summary-arrow">▼</span></summary>
+            <div class="faq-body">
+              No. TempChat is a browser-only PWA. Anyone with a modern mobile or desktop browser can join by opening the link — no App Store, no Play Store, no downloads.
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Why not just use a WhatsApp group?<span class="summary-arrow">▼</span></summary>
+            <div class="faq-body">
+              WhatsApp requires every participant to share their real phone number, and chat history persists on Meta's servers indefinitely. TempChat requires nothing — join with a link, pick a display name, done. When the room expires, every trace is gone and nobody is left connected to strangers.
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Footer ─────────────────────────────────────────────────────────── -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-inner">
+          <div class="footer-logo"><span style="color: var(--amber)">⚡</span> TempChat</div>
+          <ul class="footer-links">
+            <li><a href="https://app.tempchat.app">Open App</a></li>
+            <li><a href="terms.html">Terms of Service</a></li>
+            <li><a href="privacy.html">Privacy Policy</a></li>
+          </ul>
+        </div>
+        <p class="footer-copy">&copy; <span id="yr"></span> TempChat. Zero-knowledge. Zero trace.</p>
+      </div>
+    </footer>
+
+    <!-- ─── Scripts ────────────────────────────────────────────────────────── -->
+    <script>
+      // Dynamic copyright year
+      document.getElementById("yr").textContent = new Date().getFullYear();
+
+      // Dark / light theme toggle
+      var btn = document.getElementById("theme-toggle");
+      btn.addEventListener("click", function () {
+        var isLight = document.documentElement.classList.toggle("light");
+        localStorage.setItem("tc-theme", isLight ? "light" : "dark");
+      });
+
+      // Currency toggle (USD / VND)
+      var priceCells = document.querySelectorAll(".tier-price[data-usd]");
+      function setCurrency(cur) {
+        priceCells.forEach(function (el) { el.textContent = el.dataset[cur]; });
+        document.getElementById("cur-usd").classList.toggle("active", cur === "usd");
+        document.getElementById("cur-vnd").classList.toggle("active", cur === "vnd");
+        localStorage.setItem("tc-currency", cur);
+      }
+      document.getElementById("cur-usd").addEventListener("click", function () { setCurrency("usd"); });
+      document.getElementById("cur-vnd").addEventListener("click", function () { setCurrency("vnd"); });
+      var savedCur = localStorage.getItem("tc-currency");
+      if (savedCur) setCurrency(savedCur);
+    </script>
+  </body>
 </html>
