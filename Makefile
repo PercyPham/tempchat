@@ -1,6 +1,6 @@
 .PHONY: dev dev-be dev-wa dev-up dev-down dev-gui \
         build build-wa build-be \
-        deploy-wa deploy-site \
+        deploy-wa deploy-site deploy-be setup-server \
         serve-site \
         test test-be test-wa test-integration \
         typecheck typecheck-wa typecheck-be \
@@ -49,6 +49,12 @@ deploy-site:  ## Deploy site to Firebase Hosting (tempchat.app)
 
 serve-site:   ## Serve marketing site locally via Firebase
 	firebase serve --only hosting:site
+
+deploy-be:    ## Build Linux binary and deploy to production droplet (needs TEMPCHAT_HOST)
+	@bash scripts/deploy-be.sh
+
+setup-server: ## One-time production server provisioning (needs TEMPCHAT_HOST + TEMPCHAT_DOMAIN + TEMPCHAT_ALLOWED_ORIGINS)
+	@bash scripts/setup-server.sh
 
 # ── Test ──────────────────────────────────────────────────────────────────────
 
