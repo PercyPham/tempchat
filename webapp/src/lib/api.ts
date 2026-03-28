@@ -167,20 +167,21 @@ export async function getOrderStatus(orderId: string): Promise<OrderStatusRespon
 }
 
 export type InitiatePaymentResponse =
-  | { provider: "sepay"; orderId: string; qrUrl: string; amount: number; currency: string; expiresAt: number }
+  | { provider: "sepay"; orderId: string; amountVnd: number; accountNumber: string; bankCode: string }
   | { provider: "polar"; orderId: string; checkoutUrl: string };
 
 export async function initiatePayment(
   params: { roomId: string; boostId: string; provider: "sepay" | "polar" },
   token: string,
 ): Promise<InitiatePaymentResponse> {
-  const res = await fetch(`${API_URL}/v1/payments/initiate`, {
+  const { roomId, ...bodyParams } = params;
+  const res = await fetch(`${API_URL}/v1/rooms/${roomId}/payments/initiate`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-TempChat-Auth": token,
     },
-    body: JSON.stringify(params),
+    body: JSON.stringify(bodyParams),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: "unknown" }));

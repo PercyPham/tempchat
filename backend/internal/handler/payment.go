@@ -9,8 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -39,7 +41,6 @@ var orderIDPattern = regexp.MustCompile(`tc_[a-f0-9]+`)
 // --- InitiatePayment ---
 
 type initiatePaymentBody struct {
-	RoomID   string `json:"roomId"  binding:"required"`
 	BoostID  string `json:"boostId" binding:"required"`
 	Provider string `json:"provider" binding:"required"`
 }
@@ -50,6 +51,8 @@ func InitiatePayment(s store.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cfg := config.Payment()
 		ctx := appctx.FromGin(c)
+
+		roomID := c.Param("roomId")
 
 		var body initiatePaymentBody
 		if err := c.ShouldBindJSON(&body); err != nil {
@@ -67,7 +70,7 @@ func InitiatePayment(s store.Store) gin.HandlerFunc {
 			return
 		}
 
-		room, err := s.GetRoom(ctx, body.RoomID)
+		room, err := s.GetRoom(ctx, roomID)
 		if err != nil {
 			if errors.Is(err, storeredis.ErrRoomNotFound) {
 				c.JSON(http.StatusNotFound, gin.H{"error": "room_not_found"})
@@ -97,7 +100,7 @@ func InitiatePayment(s store.Store) gin.HandlerFunc {
 
 		order := &store.Order{
 			OrderID:   orderID,
-			RoomID:    body.RoomID,
+			RoomID:    roomID,
 			BoostID:   body.BoostID,
 			UID:       boosterUID,
 			Provider:  body.Provider,
@@ -110,30 +113,23 @@ func InitiatePayment(s store.Store) gin.HandlerFunc {
 			return
 		}
 
-		expiresAt := ctx.Now.Add(24 * time.Hour).UnixMilli()
-
 		switch body.Provider {
 		case "sepay":
-			qrURL := fmt.Sprintf(
-				"https://qr.sepay.vn/img?acc=%s&bank=%s&amount=%d&des=%s&template=compact",
-				cfg.SepayAccountNumber, cfg.SepayBankCode, boostOpt.Pricing.VND, orderID,
-			)
 			c.JSON(http.StatusOK, gin.H{
-				"provider":  "sepay",
-				"orderId":   orderID,
-				"qrUrl":     qrURL,
-				"amount":    boostOpt.Pricing.VND,
-				"currency":  "VND",
-				"expiresAt": expiresAt,
+				"provider":      "sepay",
+				"orderId":       orderID,
+				"amountVnd":     boostOpt.Pricing.VND,
+				"accountNumber": cfg.SepayAccountNumber,
+				"bankCode":      cfg.SepayBankCode,
 			})
 
 		case "polar":
-			if cfg.PolarAccessToken == "" || boostOpt.Pricing.PolarProductPriceID == "" {
+			if cfg.PolarAccessToken == "" || boostOpt.Pricing.PolarProductID == "" {
 				c.JSON(http.StatusBadGateway, gin.H{"error": "polar_not_configured"})
 				return
 			}
-			successURL := fmt.Sprintf("%s/chat/%s?orderId=%s", cfg.AppBaseURL, body.RoomID, orderID)
-			checkoutURL, err := createPolarCheckout(cfg.PolarAccessToken, boostOpt.Pricing.PolarProductPriceID, successURL, orderID)
+			successURL := fmt.Sprintf("%s/chat/%s?orderId=%s", cfg.AppBaseURL, roomID, orderID)
+			checkoutURL, err := createPolarCheckout(boostOpt.Pricing.PolarProductID, successURL, orderID)
 			if err != nil {
 				c.JSON(http.StatusBadGateway, gin.H{"error": "polar_unavailable"})
 				return
@@ -148,31 +144,45 @@ func InitiatePayment(s store.Store) gin.HandlerFunc {
 }
 
 // createPolarCheckout calls the Polar API to create a hosted checkout session.
-func createPolarCheckout(accessToken, priceID, successURL, orderID string) (string, error) {
+func createPolarCheckout(productID, successURL, orderID string) (string, error) {
+	cfg := config.Payment()
+
+	baseURL := "https://api.polar.sh"
+	if cfg.PolarEnv == "sandbox" {
+		baseURL = "https://sandbox-api.polar.sh"
+	}
+
 	payload := map[string]any{
-		"product_price_id": priceID,
-		"success_url":      successURL,
-		"metadata":         map[string]string{"orderId": orderID},
+		"products":    []string{productID},
+		"success_url": successURL,
+		"metadata":    map[string]string{"orderId": orderID},
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return "", err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, "https://api.polar.sh/v1/checkouts", bytes.NewReader(body))
+	fmt.Println(">>> polar url", baseURL+"/v1/checkouts")
+	fmt.Println(">>> polar body", string(body))
+
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/v1/checkouts", bytes.NewReader(body))
 	if err != nil {
+		fmt.Println(">>> polar req err", err)
 		return "", err
 	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Authorization", "Bearer "+cfg.PolarAccessToken)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		fmt.Println(">>> polar do err", err)
 		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(resp.Body)
+		fmt.Println(">>> polar error status", resp.StatusCode, string(respBody))
 		return "", fmt.Errorf("polar API returned %d", resp.StatusCode)
 	}
 
@@ -281,6 +291,7 @@ func PolarWebhook(s store.Store, h *hub.Hub) gin.HandlerFunc {
 		// Read raw body before binding (needed for signature verification).
 		rawBody, err := io.ReadAll(c.Request.Body)
 		if err != nil {
+			log.Printf("polar_webhook: failed to read body: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "read_error"})
 			return
 		}
@@ -292,6 +303,7 @@ func PolarWebhook(s store.Store, h *hub.Hub) gin.HandlerFunc {
 
 		if cfg.PolarWebhookSecret != "" {
 			if !verifyPolarSignature(cfg.PolarWebhookSecret, webhookID, webhookTimestamp, rawBody, webhookSig) {
+				log.Printf("polar_webhook: invalid_signature")
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_signature"})
 				return
 			}
@@ -301,11 +313,12 @@ func PolarWebhook(s store.Store, h *hub.Hub) gin.HandlerFunc {
 		var event struct {
 			Type string `json:"type"`
 			Data struct {
-				BillingReason string `json:"billing_reason"`
+				BillingReason string            `json:"billing_reason"`
 				Metadata      map[string]string `json:"metadata"`
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(rawBody, &event); err != nil {
+			log.Printf("polar_webhook: failed to parse JSON: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_body"})
 			return
 		}
@@ -331,9 +344,11 @@ func PolarWebhook(s store.Store, h *hub.Hub) gin.HandlerFunc {
 
 		order, err := s.GetOrder(ctx, orderID)
 		if err != nil {
+			log.Printf("polar_webhook: GetOrder(%q) error: %v", orderID, err)
 			c.Status(http.StatusOK)
 			return
 		}
+
 		if order.Status != "pending" {
 			c.Status(http.StatusOK)
 			return
@@ -341,6 +356,7 @@ func PolarWebhook(s store.Store, h *hub.Hub) gin.HandlerFunc {
 
 		boostOpt, ok := boostoptions.GetBoostOption(order.BoostID)
 		if !ok {
+			log.Printf("polar_webhook: unknown boostID %q", order.BoostID)
 			c.Status(http.StatusOK)
 			return
 		}
@@ -348,27 +364,36 @@ func PolarWebhook(s store.Store, h *hub.Hub) gin.HandlerFunc {
 		applyBoostOrIssueCoupon(ctx, s, h, order, boostOpt)
 
 		_ = s.SetIdempotencyKey(ctx, idempKey, "processed", 7*24*time.Hour)
+		log.Printf("polar_webhook: processed order %q", orderID)
 		c.Status(http.StatusOK)
 	}
 }
 
 // verifyPolarSignature verifies a Polar standardWebhooks HMAC-SHA256 signature.
-// The signed string is "{webhookId}.{webhookTimestamp}.{rawBody}".
-// The secret is base64-encoded; the signature header is "v1,{base64(hmac)}".
-func verifyPolarSignature(secretB64, webhookID, webhookTimestamp string, rawBody []byte, sigHeader string) bool {
-	secret, err := base64.StdEncoding.DecodeString(secretB64)
+// Polar uses the full secret string (e.g. "polar_whs_xxx") as the raw HMAC key —
+// no prefix stripping, no base64 decoding. Signed content: "{id}.{ts}.{body}".
+func verifyPolarSignature(secretEnv, webhookID, webhookTimestamp string, rawBody []byte, sigHeader string) bool {
+	// Parse timestamp header (unix epoch integer).
+	tsInt, err := strconv.ParseInt(webhookTimestamp, 10, 64)
 	if err != nil {
+		log.Printf("polar_webhook: verify: bad timestamp %q: %v", webhookTimestamp, err)
 		return false
 	}
 
-	signedContent := webhookID + "." + webhookTimestamp + "." + string(rawBody)
-	mac := hmac.New(sha256.New, secret)
-	mac.Write([]byte(signedContent))
-	expected := "v1," + base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	// Key is the full secret string as raw bytes — Polar does not base64-decode it.
+	toSign := fmt.Sprintf("%s.%d.%s", webhookID, tsInt, rawBody)
+	h := hmac.New(sha256.New, []byte(secretEnv))
+	h.Write([]byte(toSign))
+	expected := make([]byte, base64.StdEncoding.EncodedLen(h.Size()))
+	base64.StdEncoding.Encode(expected, h.Sum(nil))
 
-	// The header may contain multiple signatures separated by spaces.
-	for _, sig := range strings.Fields(sigHeader) {
-		if hmac.Equal([]byte(sig), []byte(expected)) {
+	// Header may contain multiple "v1,<base64>" signatures separated by spaces.
+	for _, versionedSig := range strings.Split(sigHeader, " ") {
+		parts := strings.SplitN(versionedSig, ",", 2)
+		if len(parts) < 2 || parts[0] != "v1" {
+			continue
+		}
+		if hmac.Equal([]byte(parts[1]), expected) {
 			return true
 		}
 	}

@@ -20,8 +20,8 @@ func main() {
 	godotenv.Load(".env.test")
 	config.Load()
 	boostoptions.Init(boostoptions.PricingConfig{
-		PolarPriceIDBoostPlus: config.Payment().PolarPriceIDBoostPlus,
-		PolarPriceIDBoostPro:  config.Payment().PolarPriceIDBoostPro,
+		PolarProductIDBoostPlus: config.Payment().PolarProductIDBoostPlus,
+		PolarProductIDBoostPro:  config.Payment().PolarProductIDBoostPro,
 		BoostPlusVND:          config.Payment().BoostPlusVND,
 		BoostProVND:           config.Payment().BoostProVND,
 	})
@@ -51,7 +51,7 @@ func main() {
 	authed.GET("/rooms/:roomId/events", handler.GetEvents(s))
 	authed.GET("/rooms/:roomId/ws", handler.WsHandler(s, h))
 	authed.POST("/rooms/:roomId/redeem-coupon", handler.RedeemCoupon(s, h))
-	authed.POST("/payments/initiate", handler.InitiatePayment(s))
+	authed.POST("/rooms/:roomId/payments/initiate", handler.InitiatePayment(s))
 
 	addr := ":" + config.App().Port
 	log.Printf("Test server starting on %s", addr)

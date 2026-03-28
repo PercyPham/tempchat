@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { hotel, hotelActions } from "../context/HotelContext";
 import { RoomService } from "../services/RoomService";
-import { ApiError, redeemCoupon, initiatePayment, getOrderStatus } from "../lib/api";
+import { ApiError, redeemCoupon, getOrderStatus } from "../lib/api";
 import { getUnusedCoupons, removeCoupon, saveCoupon, detectPaymentProvider } from "../lib/payment";
 import { useBoostOptions } from "../hooks/useBoostOptions";
 import { BoostOptionCard } from "../components/shared/BoostOptionCard";
-import { SepayQRModal } from "../components/shared/SepayQRModal";
+import { PurchaseConfirmSheet } from "../components/shared/PurchaseConfirmSheet";
 import { Spinner } from "../components/shared/Spinner";
-import type { BoostOption, CouponData, InitiatePaymentResponse } from "../lib/api";
+import type { BoostOption } from "../lib/api";
 import type { StoredCoupon } from "../lib/payment";
 
 type Phase = "extracting" | "name" | "joining" | "full" | "error";
@@ -262,15 +262,20 @@ function RoomFullPage({ roomId, roomMaxParticipants, roomMemberCount, secret, on
     ? options.filter((o) => o.maxParticipants > roomMaxParticipants)
     : options;
 
-  const [eligibleCoupons, setEligibleCoupons] = useState<StoredCoupon[]>(() =>
-    getUnusedCoupons().filter((c) => roomMemberCount !== null ? c.maxParticipants > roomMemberCount : true)
-  );
+  const eligibleCoupons = getUnusedCoupons().filter((c) => roomMemberCount !== null ? c.maxParticipants > roomMemberCount : true);
 
   const [redeemingCode, setRedeemingCode] = useState<string | null>(null);
   const [redeemError, setRedeemError] = useState<string | null>(null);
-  const [initiating, setInitiating] = useState(false);
-  const [initiateError, setInitiateError] = useState<string | null>(null);
-  const [qrData, setQrData] = useState<Extract<InitiatePaymentResponse, { provider: "sepay" }> | null>(null);
+  const [confirmOption, setConfirmOption] = useState<BoostOption | null>(null);
+
+  const detectedProvider = useMemo(() => detectPaymentProvider(), []);
+
+  const makeToken = useCallback(async () => {
+    if (!secret) throw new Error("no secret");
+    const rs = await RoomService.fromPrivateKey(secret);
+    rs.roomId = roomId;
+    return rs.makeToken(null); // non-member
+  }, [secret, roomId]);
 
   async function handleApplyCoupon(coupon: StoredCoupon) {
     if (!secret || redeemingCode) return;
@@ -287,47 +292,6 @@ function RoomFullPage({ roomId, roomMaxParticipants, roomMemberCount, secret, on
       const msg = err instanceof ApiError ? err.code : "Failed to apply coupon";
       setRedeemError(msg);
       setRedeemingCode(null);
-    }
-  }
-
-  async function handleBoostSelect(opt: BoostOption) {
-    if (!secret || initiating) return;
-    setInitiating(true);
-    setInitiateError(null);
-    try {
-      const rs = await RoomService.fromPrivateKey(secret);
-      rs.roomId = roomId;
-      const provider = detectPaymentProvider();
-      const token = await rs.makeToken(null); // non-member
-      const result = await initiatePayment({ roomId, boostId: opt.id, provider }, token);
-
-      if (result.provider === "sepay") {
-        setQrData(result);
-      } else {
-        // Polar: redirect same tab; return URL is /chat/{roomId}?orderId=...
-        // ChatPage will redirect back to /join/{roomId}?orderId=... for non-members
-        window.location.href = result.checkoutUrl;
-      }
-    } catch (err) {
-      const msg = err instanceof ApiError ? err.code : "Failed to start payment";
-      setInitiateError(msg);
-    } finally {
-      setInitiating(false);
-    }
-  }
-
-  function handleQRCompleted() {
-    setQrData(null);
-    onCouponApplied(); // room was boosted, retry join
-  }
-
-  function handleQRRoomExpired(coupon: CouponData | undefined) {
-    setQrData(null);
-    if (coupon) {
-      saveCoupon(coupon);
-      setEligibleCoupons(getUnusedCoupons().filter(
-        (c) => roomMemberCount !== null ? c.maxParticipants > roomMemberCount : true
-      ));
     }
   }
 
@@ -387,7 +351,7 @@ function RoomFullPage({ roomId, roomMaxParticipants, roomMemberCount, secret, on
                   </div>
                   <button
                     onClick={() => void handleApplyCoupon(coupon)}
-                    disabled={!!redeemingCode || initiating}
+                    disabled={!!redeemingCode}
                     className="w-full rounded-xl py-2.5 text-sm font-semibold text-obsidian transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ background: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)" }}
                   >
@@ -409,14 +373,13 @@ function RoomFullPage({ roomId, roomMaxParticipants, roomMemberCount, secret, on
           <div className="flex flex-col gap-3 mb-8">
             <p className="text-[10px] font-semibold text-warm-white/25 uppercase tracking-[0.15em] mb-1">Available boosts</p>
             {applicable.map((opt) => (
-              <BoostOptionCard key={opt.id} option={opt} onSelect={(o) => { void handleBoostSelect(o); }} />
+              <BoostOptionCard
+                key={opt.id}
+                option={opt}
+                detectedProvider={detectedProvider}
+                onSelect={(o) => setConfirmOption(o)}
+              />
             ))}
-            {initiating && (
-              <div className="flex justify-center py-2"><Spinner size={20} /></div>
-            )}
-            {initiateError && (
-              <p className="text-crimson text-xs text-center mt-1">{initiateError}</p>
-            )}
           </div>
         ) : null}
 
@@ -425,18 +388,14 @@ function RoomFullPage({ roomId, roomMaxParticipants, roomMemberCount, secret, on
         </button>
       </div>
 
-      {qrData && (
-        <SepayQRModal
-          open={!!qrData}
-          qrUrl={qrData.qrUrl}
-          orderId={qrData.orderId}
-          amount={qrData.amount}
-          expiresAt={qrData.expiresAt}
-          onClose={() => setQrData(null)}
-          onCompleted={handleQRCompleted}
-          onRoomExpired={handleQRRoomExpired}
-        />
-      )}
+      <PurchaseConfirmSheet
+        open={!!confirmOption}
+        option={confirmOption}
+        onClose={() => setConfirmOption(null)}
+        onRedirect={() => setConfirmOption(null)}
+        makeToken={makeToken}
+        roomId={roomId}
+      />
     </>
   );
 }

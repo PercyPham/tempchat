@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { BottomSheet } from "../shared/BottomSheet";
 import { BoostOptionCard } from "../shared/BoostOptionCard";
-import { SepayQRModal } from "../shared/SepayQRModal";
+import { PurchaseConfirmSheet } from "../shared/PurchaseConfirmSheet";
 import { useBoostOptions } from "../../hooks/useBoostOptions";
 import { Spinner } from "../shared/Spinner";
-import { getUnusedCoupons, removeCoupon, saveCoupon, detectPaymentProvider } from "../../lib/payment";
-import { redeemCoupon, initiatePayment, ApiError } from "../../lib/api";
-import type { BoostOption, CouponData, InitiatePaymentResponse } from "../../lib/api";
+import { getUnusedCoupons, removeCoupon, detectPaymentProvider } from "../../lib/payment";
+import { redeemCoupon, ApiError } from "../../lib/api";
+import type { BoostOption } from "../../lib/api";
 import type { StoredCoupon } from "../../lib/payment";
 import type { RoomService } from "../../services/RoomService";
 
@@ -29,10 +29,14 @@ export function BoostSheet({ open, onClose, onSelect, roomId, session }: Props) 
   const [coupons, setCoupons] = useState<StoredCoupon[]>(() => getUnusedCoupons());
   const [redeemingCode, setRedeemingCode] = useState<string | null>(null);
   const [redeemError, setRedeemError] = useState<string | null>(null);
-  const [initiating, setInitiating] = useState(false);
-  const [initiateError, setInitiateError] = useState<string | null>(null);
-  const [qrData, setQrData] = useState<Extract<InitiatePaymentResponse, { provider: "sepay" }> | null>(null);
-  const [expiredMsg, setExpiredMsg] = useState<string | null>(null);
+  const [confirmOption, setConfirmOption] = useState<BoostOption | null>(null);
+
+  const detectedProvider = useMemo(() => detectPaymentProvider(), []);
+
+  const makeToken = useCallback(async () => {
+    if (!session) throw new Error("no session");
+    return session.makeToken(session.userId);
+  }, [session]);
 
   async function handleApplyCoupon(coupon: StoredCoupon) {
     if (!session || redeemingCode) return;
@@ -49,48 +53,6 @@ export function BoostSheet({ open, onClose, onSelect, roomId, session }: Props) 
       setRedeemError(msg);
       setRedeemingCode(null);
     }
-  }
-
-  async function handleBoostSelect(opt: BoostOption) {
-    if (!session || initiating) return;
-    setInitiating(true);
-    setInitiateError(null);
-    try {
-      const provider = detectPaymentProvider();
-      const token = await session.makeToken(session.userId);
-      const result = await initiatePayment({ roomId, boostId: opt.id, provider }, token);
-
-      if (result.provider === "sepay") {
-        setQrData(result);
-      } else {
-        // Polar: redirect same tab
-        window.location.href = result.checkoutUrl;
-      }
-
-      // Also notify the parent in case it needs to track selection
-      onSelect(opt);
-    } catch (err) {
-      const msg = err instanceof ApiError ? err.code : "Failed to start payment";
-      setInitiateError(msg);
-    } finally {
-      setInitiating(false);
-    }
-  }
-
-  function handleQRCompleted() {
-    setQrData(null);
-    onClose();
-    // WS room:boosted event will update the room UI
-  }
-
-  function handleQRRoomExpired(coupon: CouponData | undefined) {
-    setQrData(null);
-    if (coupon) {
-      saveCoupon(coupon);
-      setCoupons(getUnusedCoupons());
-      setExpiredMsg("Room expired — coupon saved to your wallet");
-    }
-    onClose();
   }
 
   return (
@@ -131,7 +93,7 @@ export function BoostSheet({ open, onClose, onSelect, roomId, session }: Props) 
                   </div>
                   <button
                     onClick={() => void handleApplyCoupon(coupon)}
-                    disabled={!!redeemingCode || initiating}
+                    disabled={!!redeemingCode}
                     className="w-full rounded-xl py-2.5 text-sm font-semibold text-obsidian transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ background: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)" }}
                   >
@@ -145,10 +107,6 @@ export function BoostSheet({ open, onClose, onSelect, roomId, session }: Props) 
             )}
             <div className="h-px bg-warm-white/8 my-5" />
           </div>
-        )}
-
-        {expiredMsg && (
-          <p className="text-amber text-xs text-center mb-4">{expiredMsg}</p>
         )}
 
         {loading && (
@@ -169,31 +127,22 @@ export function BoostSheet({ open, onClose, onSelect, roomId, session }: Props) 
               <BoostOptionCard
                 key={opt.id}
                 option={opt}
-                onSelect={(o) => { void handleBoostSelect(o); }}
+                detectedProvider={detectedProvider}
+                onSelect={(o) => setConfirmOption(o)}
               />
             ))}
-            {initiating && (
-              <div className="flex justify-center py-2"><Spinner size={20} /></div>
-            )}
-            {initiateError && (
-              <p className="text-crimson text-xs text-center mt-1">{initiateError}</p>
-            )}
           </div>
         )}
       </BottomSheet>
 
-      {qrData && (
-        <SepayQRModal
-          open={!!qrData}
-          qrUrl={qrData.qrUrl}
-          orderId={qrData.orderId}
-          amount={qrData.amount}
-          expiresAt={qrData.expiresAt}
-          onClose={() => setQrData(null)}
-          onCompleted={handleQRCompleted}
-          onRoomExpired={handleQRRoomExpired}
-        />
-      )}
+      <PurchaseConfirmSheet
+        open={!!confirmOption}
+        option={confirmOption}
+        onClose={() => setConfirmOption(null)}
+        onRedirect={() => { setConfirmOption(null); if (confirmOption) onSelect(confirmOption); }}
+        makeToken={makeToken}
+        roomId={roomId}
+      />
     </>
   );
 }

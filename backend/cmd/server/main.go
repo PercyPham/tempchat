@@ -26,8 +26,8 @@ func main() {
 	godotenv.Load() // .env (no-op if absent)
 	config.Load()
 	boostoptions.Init(boostoptions.PricingConfig{
-		PolarPriceIDBoostPlus: config.Payment().PolarPriceIDBoostPlus,
-		PolarPriceIDBoostPro:  config.Payment().PolarPriceIDBoostPro,
+		PolarProductIDBoostPlus: config.Payment().PolarProductIDBoostPlus,
+		PolarProductIDBoostPro:  config.Payment().PolarProductIDBoostPro,
 		BoostPlusVND:          config.Payment().BoostPlusVND,
 		BoostProVND:           config.Payment().BoostProVND,
 	})
@@ -89,7 +89,7 @@ func main() {
 		middleware.IPRateLimit(rl, "rl:coupon_redeem", redis_rate.Limit{Rate: 10, Burst: 3, Period: time.Minute}),
 		handler.RedeemCoupon(s, h),
 	)
-	authed.POST("/payments/initiate",
+	authed.POST("/rooms/:roomId/payments/initiate",
 		middleware.IPRateLimit(rl, "rl:payment_initiate", redis_rate.Limit{Rate: 10, Burst: 5, Period: time.Minute}),
 		handler.InitiatePayment(s),
 	)

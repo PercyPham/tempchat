@@ -22,3 +22,6 @@
 .firebase/
 
 .claude/settings.local.json
+
+# MCP logs
+.playwright-mcp/

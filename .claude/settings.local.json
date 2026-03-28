@@ -32,7 +32,10 @@
       "mcp__playwright__browser_click",
       "mcp__playwright__browser_fill_form",
       "mcp__playwright__browser_network_requests",
-      "mcp__playwright__browser_evaluate"
+      "mcp__playwright__browser_evaluate",
+      "WebFetch(domain:polar.sh)",
+      "Bash(gh api:*)",
+      "Bash(go run:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

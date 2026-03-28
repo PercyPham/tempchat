@@ -4,11 +4,11 @@
 
 Room boosts are one-time purchases per room. Both payment methods — **SePay** (Vietnam, VND) and **Polar** (Global, USD) — are always presented to the user. Locale detection on the frontend determines which one is pre-selected by default:
 
-| Signal | Default Selection |
-|--------|------------------|
-| `navigator.language` starts with `vi` | SePay |
-| Timezone is `Asia/Ho_Chi_Minh` or `Asia/Saigon` | SePay |
-| All other cases | Polar |
+| Signal                                          | Default Selection |
+| ----------------------------------------------- | ----------------- |
+| `navigator.language` starts with `vi`           | SePay             |
+| Timezone is `Asia/Ho_Chi_Minh` or `Asia/Saigon` | SePay             |
+| All other cases                                 | Polar             |
 
 The user can switch to the other provider before confirming. The selected provider is sent to the backend in the initiate request.
 
@@ -86,27 +86,29 @@ The response is display-only — numeric prices only, no payment provider IDs. A
 
 ## 3. New API Endpoints
 
-### 3.1 `POST /v1/payments/initiate`
+### 3.1 `POST /v1/rooms/:roomId/payments/initiate`
 
 Creates a pending order and returns provider-specific checkout info.
 
 **Auth:** `X-TempChat-Auth` required. `uid` may be null for non-members (same pattern as the initial join request).
 
 **Request:**
+
 ```json
 {
-  "roomId": "room-uuid",
   "boostId": "boost_plus",
   "provider": "sepay" | "polar"
 }
 ```
 
 **Validation:**
+
 - Room must exist and not be expired
 - Boost option must exist
 - If `uid` is null (non-member): verify the boost raises `maxParticipants` above current `memberCount`
 
 **Response — SePay:**
+
 ```json
 {
   "provider": "sepay",
@@ -119,6 +121,7 @@ Creates a pending order and returns provider-specific checkout info.
 ```
 
 **Response — Polar:**
+
 ```json
 {
   "provider": "polar",
@@ -153,6 +156,7 @@ SePay calls this after a successful bank transfer.
 Return `403` for requests from any other IP.
 
 **SePay payload (relevant fields):**
+
 ```json
 {
   "id": 12345,
@@ -165,6 +169,7 @@ Return `403` for requests from any other IP.
 ```
 
 **Processing:**
+
 1. Verify API key header — return `401` if invalid
 2. Extract `orderId` from `content` field (first token matching `tc_[a-z0-9]+`)
 3. Idempotency: check `payment:sepay:ref:{referenceCode}` in Redis — return `200` immediately if exists
@@ -185,6 +190,7 @@ Polar calls this for `order.paid` events (one-time purchases with `billing_reaso
 **Auth:** Verify `webhook-signature` header using HMAC-SHA256 with `POLAR_WEBHOOK_SECRET` env var (base64-encoded secret). Signed payload is `{webhook-timestamp}.{raw body}`.
 
 **Relevant Polar event:**
+
 ```json
 {
   "type": "order.paid",
@@ -205,6 +211,7 @@ Polar calls this for `order.paid` events (one-time purchases with `billing_reaso
 The `webhook-id` header value is used as the idempotency key.
 
 **Processing:**
+
 1. Verify `webhook-signature` — return `400` if invalid
 2. Ignore events where `type != "order.paid"` or `billing_reason != "purchase"` — return `200 OK` immediately (prevents Polar retries on unrelated event types)
 3. Idempotency: check `payment:polar:webhook:{webhook-id}` — return `200` immediately if exists
@@ -222,63 +229,63 @@ The `webhook-id` header value is used as the idempotency key.
 
 ### Key: `order:{orderId}:meta` (Hash)
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `roomId` | string | Target room |
-| `boostId` | string | e.g. `boost_plus` |
-| `uid` | string | Booster's userId; empty string for non-members |
-| `provider` | string | `sepay` or `polar` |
-| `status` | string | `pending` / `completed` / `room_expired` |
-| `couponCode` | string | Set only when `status == "room_expired"` |
-| `amountVND` | int64 | For SePay orders |
-| `createdAt` | int64 | Unix ms |
+| Field        | Type   | Description                                    |
+| ------------ | ------ | ---------------------------------------------- |
+| `roomId`     | string | Target room                                    |
+| `boostId`    | string | e.g. `boost_plus`                              |
+| `uid`        | string | Booster's userId; empty string for non-members |
+| `provider`   | string | `sepay` or `polar`                             |
+| `status`     | string | `pending` / `completed` / `room_expired`       |
+| `couponCode` | string | Set only when `status == "room_expired"`       |
+| `amountVND`  | int64  | For SePay orders                               |
+| `createdAt`  | int64  | Unix ms                                        |
 
 **TTL:** 24 hours. This covers both the SePay QR expiry window and the Polar checkout session expiry.
 
 ### Idempotency Keys
 
-| Key | Value | TTL |
-|-----|-------|-----|
-| `payment:sepay:ref:{referenceCode}` | `orderId` | 7 days |
-| `payment:polar:webhook:{webhookId}` | `"processed"` | 7 days |
-| `coupon:{code}` | Hash (see [Coupon Design](features/coupon_design.md)) | 7 days |
+| Key                                 | Value                                                 | TTL    |
+| ----------------------------------- | ----------------------------------------------------- | ------ |
+| `payment:sepay:ref:{referenceCode}` | `orderId`                                             | 7 days |
+| `payment:polar:webhook:{webhookId}` | `"processed"`                                         | 7 days |
+| `coupon:{code}`                     | Hash (see [Coupon Design](features/coupon_design.md)) | 7 days |
 
 ---
 
 ## 5. SePay Payment Flow
 
+SePay uses a hosted Payment Gateway (PG) page — the user is redirected there (via form POST) to complete the payment on SePay's mobile-friendly UI. This avoids the QR-on-same-device problem. The underlying payment mechanism is still a VietQR bank transfer; SePay's bank-transfer monitoring webhook confirms the payment exactly as before.
+
 ```
-Frontend                    Backend                     SePay
-   |                            |                          |
-   |-- POST /v1/payments/initiate ->                       |
-   |   { roomId, boostId, provider: "sepay" }              |
-   |                            | create order in Redis    |
-   |<-- { orderId, qrUrl, amount, expiresAt }              |
-   |                            |                          |
-   | show SepayQRModal          |                          |
-   | (QR image + countdown)     |                          |
-   | poll GET /v1/orders/:orderId                          |
-   |                            |                          |
-   | [user pays via banking app]|------- bank transfer --->|
-   |                            |                          |
+Frontend                    Backend                     SePay PG / Bank
+   |                            |                              |
+   |-- POST /v1/rooms/:roomId/payments/initiate ->             |
+   |   { boostId, provider: "sepay" }                         |
+   |                            | create order in Redis        |
+   |                            | build signed PG form fields  |
+   |<-- { orderId, checkoutUrl, formFields }                   |
+   |                            |                              |
+   | auto-submit hidden form    |                              |
+   | POST → SePay PG page       |                              |
+   |                            |                              |
+   | [user pays on SePay page]  |------ bank transfer ------->|
+   |                            |                              |
    |                            |<-- POST /payments/sepay/webhook
-   |                            | verify → apply boost     |
-   |                            | (or generate coupon)     |
-   |                            | broadcast room:boosted   |
-   |                            |                          |
-   |<-- order status: completed |                          |
-   | (or room_expired + coupon) |                          |
-   | close modal, show result   |                          |
+   |                            | verify → apply boost         |
+   |                            | (or generate coupon)         |
+   |                            | broadcast room:boosted        |
+   |                            |                              |
+   | SePay redirects to         |                              |
+   | /chat/{roomId}?orderId=... |                              |
+   | poll GET /v1/orders/:orderId                              |
+   |<-- completed / room_expired|                              |
 ```
 
-**QR URL format:**
-```
-https://qr.sepay.vn/img?acc={SEPAY_ACCOUNT_NUMBER}&bank={SEPAY_BANK_CODE}&amount={amountVND}&des={orderId}&template=compact
-```
+**Checkout form:** The backend generates signed form fields using HMAC-SHA256 (`SEPAY_PG_SECRET_KEY`) in the SDK-defined field order. The frontend creates a hidden `<form method="POST">`, populates it with these fields, and calls `form.submit()` — redirecting the user to `https://pay.sepay.vn` (or `https://pay-sandbox.sepay.vn` in sandbox).
 
-The backend constructs this URL and returns it in the initiate response. The frontend renders it as an `<img>` src — no client-side QR generation library needed.
+`order_invoice_number` is set to `orderId` (`tc_xxx...`), which SePay includes in the bank transfer content. The existing webhook handler extracts it via the `tc_[a-f0-9]+` regex — no changes to webhook processing.
 
-**Confirmation polling:** The frontend polls `GET /v1/orders/:orderId` every 3 seconds while the QR modal is open. This handles both the happy path (`completed`) and the expired-room fallback (`room_expired` with coupon). The WebSocket `room:boosted` event closes the modal in the happy path if the WS is connected.
+**Confirmation:** After paying, SePay redirects to `success_url` = `{APP_BASE_URL}/chat/{roomId}?orderId={orderId}`. `ChatPage` polls `GET /v1/orders/:orderId` every 3 seconds until `status != "pending"`. The WebSocket `room:boosted` event also confirms success if connected.
 
 ---
 
@@ -287,7 +294,7 @@ The backend constructs this URL and returns it in the initiate response. The fro
 ```
 Frontend                    Backend                     Polar
    |                            |                          |
-   |-- POST /v1/payments/initiate ->                       |
+   |-- POST /v1/rooms/:roomId/payments/initiate ->          |
    |   { roomId, boostId, provider: "polar" }              |
    |                            | create order in Redis    |
    |                            |-- POST /v1/checkouts --->|
@@ -308,13 +315,14 @@ Frontend                    Backend                     Polar
    | show result (or save coupon)                          |
 ```
 
-**`successUrl` format:** `https://app.tempchat.io/chat/{roomId}?orderId={orderId}`
+**`successUrl` format:** `https://app.tempchat.app/chat/{roomId}?orderId={orderId}`
 
 On load, `ChatPage` reads `orderId` from the query string and polls `GET /v1/orders/:orderId` every 3 seconds until `status != "pending"`. If `room_expired`, the coupon is saved to localStorage and a message is shown.
 
 **Non-member redirect:** If the user was a non-member (initiated payment from `JoinPage`), Polar still redirects to `/chat/{roomId}?orderId=...`. `ChatPage` checks whether the user has joined this room (via localStorage identity). If not, it redirects to `/join/{roomId}?orderId={orderId}`, preserving the query param. `JoinPage` then reads `?orderId=` on load and begins polling `GET /v1/orders/:orderId`. Once the order is `completed`, `JoinPage` re-attempts the join request automatically.
 
 **Backend — creating the Polar checkout session (Go):**
+
 ```go
 import "github.com/polarsource/polar-go"
 
@@ -325,7 +333,7 @@ client := polar.NewClient(
 
 session, err := client.Checkouts.Create(ctx, &polar.CheckoutCreateParams{
     ProductPriceID: boostOption.Pricing.PolarPriceID,
-    SuccessURL:     successURL, // e.g. "https://app.tempchat.io/chat/{roomId}?orderId={orderId}"
+    SuccessURL:     successURL, // e.g. "https://app.tempchat.app/chat/{roomId}?orderId={orderId}"
     Metadata: map[string]string{
         "orderId": orderId,
     },
@@ -334,6 +342,7 @@ session, err := client.Checkouts.Create(ctx, &polar.CheckoutCreateParams{
 ```
 
 **Frontend — initiating Polar checkout:**
+
 ```typescript
 // Redirect the current tab to the Polar hosted checkout page.
 // Same-tab redirect avoids popup blockers on mobile.
@@ -362,74 +371,67 @@ export function detectPaymentProvider(): "sepay" | "polar" {
 
 ### `webapp/src/lib/api.ts`
 
-Add `initiatePayment(params, authHeader)` returning `InitiatePaymentResponse` (union type of SePay and Polar responses). Add `getOrderStatus(orderId)` and `redeemCoupon(params, authHeader)`.
+Add `initiatePayment(params, authHeader)` returning `InitiatePaymentResponse` (union type of SePay and Polar responses). `params` includes `roomId` (used to build the URL path), `boostId`, and `provider`. Add `getOrderStatus(orderId)` and `redeemCoupon(params, authHeader)`.
 
 No changes to the `BoostOption` interface — provider IDs are not part of the boost options type.
 
 ### `webapp/src/components/chat/BoostSheet.tsx`
 
-Replace `alert("Boost payment coming soon!")` with:
 1. Detect provider via `detectPaymentProvider()`
 2. Show "Your Coupons" section at top if `getUnusedCoupons()` is non-empty
 3. Call `initiatePayment` when a paid option is selected
-4. If SePay: mount `<SepayQRModal>`, poll `getOrderStatus` every 3s
-5. If Polar: redirect to `checkoutUrl` via `window.location.href`
-6. On `room_expired` order status: call `saveCoupon()`, show message, close modal
+4. Both SePay and Polar redirect the user away — no in-app modal after confirm
 
 ### `webapp/src/pages/JoinPage.tsx`
 
-Replace the `BoostConstructionPage` redirect with the same payment flow as `BoostSheet`. On `room:boosted` WS event, re-attempt the `join` request. If user has a coupon that covers the needed tier, show "Apply coupon to join" alongside paid options.
+Same payment flow as `BoostSheet`. On `room:boosted` WS event, re-attempt the `join` request. If user has a coupon that covers the needed tier, show "Apply coupon to join" alongside paid options.
 
-On load, read `?orderId=` from query string — if present, poll `getOrderStatus` to detect a pending Polar confirmation (handles the case where the user returns from the Polar checkout but lands on a join page rather than a room page).
+On load, read `?orderId=` from query string — if present, poll `getOrderStatus` to detect a pending payment confirmation (handles both SePay and Polar redirects back to the join page).
 
-### New: `webapp/src/components/shared/SepayQRModal.tsx`
+### `webapp/src/components/shared/PurchaseConfirmSheet.tsx`
 
-Bottom sheet / modal showing:
-- QR code image (`<img src={qrUrl}>`)
-- Amount in VND
-- `orderId` as payment reference
-- Countdown timer to order expiry
-- "Waiting for confirmation..." spinner
-- Dismiss button
+Two-provider toggle (SePay / Polar). On confirm:
 
-Closes automatically on `room:boosted` WS event or when `getOrderStatus` returns `completed` / `room_expired`.
+- **SePay:** creates a hidden `<form method="POST" action={checkoutUrl}>`, populates with `formFields` from the initiate response, and calls `form.submit()` — redirecting the user to SePay's hosted checkout page.
+- **Polar:** `window.location.href = checkoutUrl` — redirecting the user to Polar's hosted checkout page.
 
 ---
 
 ## 8. Files to Create / Modify
 
-| File | Action |
-|------|--------|
-| `docs/design/payment_design.md` | New — this document |
-| `docs/design/features/coupon_design.md` | New — coupon fallback design |
-| `backend/internal/boostoptions/options.go` | Add `PolarPriceID`, `AmountVND` to struct; load from env at startup |
-| `backend/internal/handler/boost.go` | Updated to read from `Pricing` struct; exposes `priceUsdCents` and `priceVnd` only |
-| `backend/internal/handler/payment.go` | New — `InitiatePayment`, `SepayWebhook`, `PolarWebhook`, `GetOrderStatus`, `RedeemCoupon` handlers |
-| `backend/internal/store/store.go` | Add `CreateOrder`, `GetOrder`, `CompleteOrder`, `CreateCoupon`, `GetCoupon`, `RedeemCoupon`, `GetOrderStatus`, idempotency key methods |
-| `backend/cmd/server/main.go` | Register `/v1/payments/*`, `GET /v1/orders/:orderId`, and `POST /v1/rooms/:roomId/redeem-coupon` routes with rate limits |
-| `webapp/src/lib/payment.ts` | New — provider detection, `initiatePayment`, `saveCoupon`, `getUnusedCoupons`, `removeCoupon` |
-| `webapp/src/lib/api.ts` | Add payment types, `initiatePayment`, `getOrderStatus`, `redeemCoupon`; no change to `BoostOption` interface |
-| `webapp/src/components/chat/BoostSheet.tsx` | Replace stub with real payment flow; add "Your Coupons" section |
-| `webapp/src/components/shared/SepayQRModal.tsx` | New — QR display modal component |
-| `webapp/src/pages/JoinPage.tsx` | Replace `BoostConstructionPage` with real payment flow; add coupon redemption option |
+| File                                                    | Action                                                                                                                                 |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/design/payment_design.md`                         | New — this document                                                                                                                    |
+| `docs/design/features/coupon_design.md`                 | New — coupon fallback design                                                                                                           |
+| `backend/internal/boostoptions/options.go`              | Add `PolarPriceID`, `AmountVND` to struct; load from env at startup                                                                    |
+| `backend/internal/handler/boost.go`                     | Updated to read from `Pricing` struct; exposes `priceUsdCents` and `priceVnd` only                                                     |
+| `backend/internal/handler/payment.go`                   | New — `InitiatePayment`, `SepayWebhook`, `PolarWebhook`, `GetOrderStatus`, `RedeemCoupon` handlers                                     |
+| `backend/internal/store/store.go`                       | Add `CreateOrder`, `GetOrder`, `CompleteOrder`, `CreateCoupon`, `GetCoupon`, `RedeemCoupon`, `GetOrderStatus`, idempotency key methods |
+| `backend/cmd/server/main.go`                            | Register `/v1/payments/*`, `GET /v1/orders/:orderId`, and `POST /v1/rooms/:roomId/redeem-coupon` routes with rate limits               |
+| `webapp/src/lib/payment.ts`                             | New — provider detection, `initiatePayment`, `saveCoupon`, `getUnusedCoupons`, `removeCoupon`                                          |
+| `webapp/src/lib/api.ts`                                 | Add payment types, `initiatePayment`, `getOrderStatus`, `redeemCoupon`; no change to `BoostOption` interface                           |
+| `webapp/src/components/chat/BoostSheet.tsx`             | Real payment flow; "Your Coupons" section; both providers redirect away                                                                |
+| `webapp/src/components/shared/PurchaseConfirmSheet.tsx` | SePay: hidden form POST to SePay PG; Polar: `window.location.href`                                                                     |
+| `webapp/src/pages/JoinPage.tsx`                         | Real payment flow; coupon redemption; `?orderId=` polling for both providers                                                           |
 
 ---
 
 ## 9. Environment Variables
 
-| Variable | Side | Description |
-|----------|------|-------------|
-| `POLAR_ACCESS_TOKEN` | Backend | Organization Access Token for Polar API (creates checkout sessions) |
-| `POLAR_WEBHOOK_SECRET` | Backend | Webhook signature verification key (base64-encoded) |
-| `POLAR_PRICE_ID_BOOST_PLUS` | Backend | Polar product price ID for Plus Boost |
-| `POLAR_PRICE_ID_BOOST_PRO` | Backend | Polar product price ID for Pro Boost |
-| `SEPAY_WEBHOOK_API_KEY` | Backend | Verify incoming SePay webhook requests |
-| `SEPAY_ACCOUNT_NUMBER` | Backend | Bank account number for QR generation |
-| `SEPAY_BANK_CODE` | Backend | Bank code for QR generation (e.g. `VCB`) |
-| `BOOST_PLUS_VND` | Backend | VND price for Plus Boost |
-| `BOOST_PRO_VND` | Backend | VND price for Pro Boost |
+| Variable                    | Side    | Description                                                         |
+| --------------------------- | ------- | ------------------------------------------------------------------- |
+| `POLAR_ACCESS_TOKEN`        | Backend | Organization Access Token for Polar API (creates checkout sessions) |
+| `POLAR_WEBHOOK_SECRET`      | Backend | Webhook signature verification key (base64-encoded)                 |
+| `POLAR_PRICE_ID_BOOST_PLUS` | Backend | Polar product price ID for Plus Boost                               |
+| `POLAR_PRICE_ID_BOOST_PRO`  | Backend | Polar product price ID for Pro Boost                                |
+| `SEPAY_PG_MERCHANT_ID`      | Backend | SePay PG merchant ID (for signed checkout form)                     |
+| `SEPAY_PG_SECRET_KEY`       | Backend | SePay PG secret key (HMAC-SHA256 signature)                         |
+| `SEPAY_PG_ENV`              | Backend | `production` or `sandbox` (default: `production`)                   |
+| `SEPAY_WEBHOOK_API_KEY`     | Backend | Verify incoming SePay bank-transfer monitoring webhooks             |
+| `BOOST_PLUS_VND`            | Backend | VND price for Plus Boost                                            |
+| `BOOST_PRO_VND`             | Backend | VND price for Pro Boost                                             |
 
-> No frontend environment variables are required for Polar. The checkout is server-initiated; the frontend only receives a URL to redirect to.
+> No frontend environment variables are required. Both SePay and Polar checkouts are server-initiated; the frontend only receives a URL/form to redirect to.
 
 ---
 
