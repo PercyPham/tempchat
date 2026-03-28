@@ -5,7 +5,8 @@ import { useNewMessages } from "../hooks/useNewMessages";
 import { hotel } from "../context/HotelContext";
 import { RoomCard } from "../components/dashboard/RoomCard";
 import { EmptyState } from "../components/dashboard/EmptyState";
-import { FabButton } from "../components/dashboard/FabButton";
+import { SpeedDialFab } from "../components/dashboard/SpeedDialFab";
+import { JoinLinkSheet } from "../components/dashboard/JoinLinkSheet";
 import { ThemeToggle } from "../components/shared/ThemeToggle";
 
 export function DashboardPage() {
@@ -13,6 +14,7 @@ export function DashboardPage() {
   const rooms = useRooms();
   const [names, setNames] = useState<Map<string, string>>(new Map());
   const newMessages = useNewMessages(rooms);
+  const [joinSheetOpen, setJoinSheetOpen] = useState(false);
 
   useEffect(() => {
     for (const room of rooms) {
@@ -25,6 +27,10 @@ export function DashboardPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rooms]);
+
+  const handleJoinLink = (roomId: string, hash: string) => {
+    navigate(`/join/${roomId}${hash}`);
+  };
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-12 pb-24">
@@ -59,7 +65,7 @@ export function DashboardPage() {
       </header>
 
       {rooms.length === 0 ? (
-        <EmptyState />
+        <EmptyState onJoin={() => setJoinSheetOpen(true)} />
       ) : (
         <div className="flex flex-col gap-2">
           {rooms.map((room, i) => (
@@ -76,7 +82,16 @@ export function DashboardPage() {
         </div>
       )}
 
-      <FabButton onClick={() => navigate("/create")} />
+      <SpeedDialFab
+        onCreate={() => navigate("/create")}
+        onJoin={() => setJoinSheetOpen(true)}
+      />
+
+      <JoinLinkSheet
+        open={joinSheetOpen}
+        onClose={() => setJoinSheetOpen(false)}
+        onJoin={handleJoinLink}
+      />
     </div>
   );
 }

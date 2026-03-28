@@ -1,4 +1,8 @@
-export function EmptyState() {
+interface Props {
+  onJoin: () => void;
+}
+
+export function EmptyState({ onJoin }: Props) {
   return (
     <div className="flex flex-col items-center justify-center gap-5 py-20 px-8 text-center animate-fade-in">
       {/* Glowing lock mark */}
@@ -23,6 +27,17 @@ export function EmptyState() {
           Create an encrypted room or join one via an invite link. Keys never leave your device.
         </p>
       </div>
+
+      <button
+        onClick={onJoin}
+        className="text-amber/60 hover:text-amber/90 text-sm font-medium transition-colors flex items-center gap-1.5 underline underline-offset-4 decoration-amber/25 hover:decoration-amber/50"
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="shrink-0">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Join a room via invite link
+      </button>
     </div>
   );
 }
