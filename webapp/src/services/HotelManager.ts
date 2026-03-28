@@ -15,7 +15,8 @@ export class HotelManager {
   private sessions = new Map<string, RoomService>();
   private metadata = new Map<string, PersistedRoom>();
 
-  // On app start: load all non-expired rooms from localStorage, rehydrate RoomService instances
+  // On app start: load all non-expired rooms from localStorage, rehydrate RoomService instances,
+  // then refresh expiresAt from server in parallel to pick up any boosts applied while offline.
   async loadAll(): Promise<RoomService[]> {
     const sessions: RoomService[] = [];
     const now = Date.now();
@@ -39,6 +40,25 @@ export class HotelManager {
       this.metadata.set(data.roomId, data);
       sessions.push(session);
     }
+
+    // Refresh expiresAt from server in parallel — catches boosts applied while browser was closed.
+    // Silently falls back to cached value on network errors.
+    await Promise.all(
+      Array.from(this.sessions.entries()).map(async ([roomId, session]) => {
+        try {
+          const room = await session.getRoom();
+          const data = this.metadata.get(roomId)!;
+          if (room.expiresAt !== data.expiresAt) {
+            const updated = { ...data, expiresAt: room.expiresAt };
+            this.metadata.set(roomId, updated);
+            localStorage.setItem(`${LS_PREFIX}${roomId}`, JSON.stringify(updated));
+          }
+        } catch {
+          // Network error or room gone server-side — keep cached version
+        }
+      }),
+    );
+
     return sessions;
   }
 
@@ -70,6 +90,15 @@ export class HotelManager {
   listRooms(): PersistedRoom[] {
     const now = Date.now();
     return Array.from(this.metadata.values()).filter((m) => m.expiresAt > now);
+  }
+
+  // Update expiresAt after a boost — writes to both in-memory metadata and localStorage
+  updateExpiry(roomId: string, expiresAt: number): void {
+    const data = this.metadata.get(roomId);
+    if (!data) return;
+    const updated = { ...data, expiresAt };
+    this.metadata.set(roomId, updated);
+    localStorage.setItem(`${LS_PREFIX}${roomId}`, JSON.stringify(updated));
   }
 
   // Wipe room from localStorage + in-memory maps

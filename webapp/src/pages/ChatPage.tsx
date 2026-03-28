@@ -224,6 +224,7 @@ export function ChatPage() {
         };
         if (raw.expiresAt) {
           setRoomInfo((prev) => (prev ? { ...prev, expiresAt: raw.expiresAt as number } : prev));
+          hotelActions.updateExpiry(roomId!, raw.expiresAt as number);
         }
       } else {
         return; // unknown event type

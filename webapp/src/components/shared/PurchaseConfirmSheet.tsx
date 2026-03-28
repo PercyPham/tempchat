@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BottomSheet } from "./BottomSheet";
 import { Spinner } from "./Spinner";
-import { detectPaymentProvider, buildSePayFormFields, sepayCheckoutUrl } from "../../lib/payment";
-import { initiatePayment, ApiError } from "../../lib/api";
+import { detectPaymentProvider } from "../../lib/payment";
+import { initiatePayment, getOrderStatus, ApiError } from "../../lib/api";
+import { saveCoupon } from "../../lib/payment";
 import type { BoostOption } from "../../lib/api";
 
 interface Props {
@@ -15,6 +16,14 @@ interface Props {
 }
 
 type Provider = "sepay" | "polar";
+
+interface SePayQRData {
+  orderId: string;
+  amountVnd: number;
+  accountNumber: string;
+  bankCode: string;
+  bankName: string;
+}
 
 function formatTtl(ms: number): string {
   const hours = ms / (1000 * 60 * 60);
@@ -30,33 +39,100 @@ function formatVnd(vnd: number): string {
   return vnd.toLocaleString("vi-VN") + " ₫";
 }
 
-function submitSePayForm(checkoutUrl: string, formFields: Record<string, string>) {
-  const form = document.createElement("form");
-  form.method = "POST";
-  form.action = checkoutUrl;
-  for (const [k, v] of Object.entries(formFields)) {
-    const input = document.createElement("input");
-    input.type = "hidden";
-    input.name = k;
-    input.value = v;
-    form.appendChild(input);
-  }
-  document.body.appendChild(form);
-  form.submit();
+function CopyRow({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    void navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className="flex items-center justify-between py-2.5 border-b border-warm-white/6 last:border-0">
+      <div>
+        <p className="text-[10px] font-semibold text-warm-white/30 uppercase tracking-[0.12em] mb-0.5">{label}</p>
+        <p className="text-sm font-mono text-warm-white/80">{value}</p>
+      </div>
+      <button
+        onClick={handleCopy}
+        className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-all active:scale-95"
+        style={{
+          background: copied ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.06)",
+          color: copied ? "rgba(34,197,94,0.9)" : "rgba(255,255,255,0.4)",
+          border: copied ? "1px solid rgba(34,197,94,0.2)" : "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        {copied ? "Copied" : "Copy"}
+      </button>
+    </div>
+  );
 }
 
 export function PurchaseConfirmSheet({ open, option, onClose, onRedirect, makeToken, roomId }: Props) {
   const [provider, setProvider] = useState<Provider>(() => detectPaymentProvider());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState<"confirm" | "qr">("confirm");
+  const [qrData, setQrData] = useState<SePayQRData | null>(null);
+  const [pollStatus, setPollStatus] = useState<"waiting" | "done">("waiting");
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Reset state when sheet opens/closes
   useEffect(() => {
     if (open) {
       setProvider(detectPaymentProvider());
       setError(null);
       setLoading(false);
+      setStep("confirm");
+      setQrData(null);
+      setPollStatus("waiting");
+    } else {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
     }
   }, [open]);
+
+  // Start polling when QR step is active
+  useEffect(() => {
+    if (step !== "qr" || !qrData) return;
+
+    pollRef.current = setInterval(() => {
+      void getOrderStatus(qrData.orderId).then((res) => {
+        if (res.status === "completed") {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+          setPollStatus("done");
+          setTimeout(() => onRedirect(), 800);
+        } else if (res.status === "room_expired") {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+          if (res.coupon) {
+            saveCoupon({
+              code: res.coupon.code,
+              boostName: res.coupon.boostName,
+              ttlMs: res.coupon.ttlMs,
+              maxParticipants: res.coupon.maxParticipants,
+              maxEvents: res.coupon.maxEvents,
+              expiresAt: res.coupon.expiresAt,
+            });
+          }
+          setPollStatus("done");
+          setTimeout(() => onRedirect(), 800);
+        }
+      });
+    }, 3000);
+
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [step, qrData, onRedirect]);
 
   const handleConfirm = useCallback(async () => {
     if (!option || loading) return;
@@ -66,17 +142,20 @@ export function PurchaseConfirmSheet({ open, option, onClose, onRedirect, makeTo
       const token = await makeToken();
       const result = await initiatePayment({ roomId, boostId: option.id, provider }, token);
       if (result.provider === "sepay") {
-        const formFields = await buildSePayFormFields({
+        setQrData({
           orderId: result.orderId,
           amountVnd: result.amountVnd,
-          roomId,
+          accountNumber: result.accountNumber,
+          bankCode: result.bankCode,
+          bankName: result.bankName,
         });
-        submitSePayForm(sepayCheckoutUrl(), formFields);
+        setStep("qr");
+        setLoading(false);
       } else {
         window.location.href = result.checkoutUrl;
+        onRedirect();
+        // intentionally leave loading=true — sheet closes before reset
       }
-      onRedirect();
-      // intentionally leave loading=true — sheet closes before reset
     } catch (err) {
       setError(err instanceof ApiError ? err.code : "Failed to start payment");
       setLoading(false);
@@ -86,6 +165,56 @@ export function PurchaseConfirmSheet({ open, option, onClose, onRedirect, makeTo
   if (!option) return null;
 
   const tags = [`+${formatTtl(option.ttlMs)}`, `${option.maxParticipants} members`, `${option.maxEvents} events`];
+
+  if (step === "qr" && qrData) {
+    const qrUrl = `https://img.vietqr.io/image/${qrData.bankCode}-${qrData.accountNumber}-qr_only.png?amount=${qrData.amountVnd}&addInfo=${encodeURIComponent(qrData.orderId)}`;
+
+    return (
+      <BottomSheet open={open} onClose={onClose} title="Bank Transfer">
+        {/* QR code + bank info — centered together so text aligns under the QR */}
+        <div className="flex flex-col items-center gap-4 mb-5">
+          <div className="rounded-2xl p-3" style={{ background: "#fff" }}>
+            <img src={qrUrl} alt="VietQR payment code" width={200} height={200} className="block" />
+          </div>
+
+          {/* Bank info */}
+          <div
+            className="w-full max-w-70 rounded-2xl px-4 pt-1 pb-1"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+          >
+            {qrData.bankName && (
+              <div className="py-2.5 border-b border-warm-white/6">
+                <p className="text-[10px] font-semibold text-warm-white/30 uppercase tracking-[0.12em] mb-0.5">Bank</p>
+                <p className="text-sm text-warm-white/80">{qrData.bankName}</p>
+              </div>
+            )}
+            <CopyRow label="Account Number" value={qrData.accountNumber} />
+            <CopyRow label="Transfer Content" value={qrData.orderId} />
+            <div className="py-2.5">
+              <p className="text-[10px] font-semibold text-warm-white/30 uppercase tracking-[0.12em] mb-0.5">Amount</p>
+              <p className="text-sm font-semibold" style={{ color: "rgba(245,158,11,0.9)" }}>
+                {formatVnd(qrData.amountVnd)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="flex items-center justify-center gap-2 py-3">
+          {pollStatus === "done" ? (
+            <p className="text-sm font-semibold" style={{ color: "rgba(34,197,94,0.9)" }}>
+              Payment confirmed!
+            </p>
+          ) : (
+            <>
+              <Spinner size={14} />
+              <p className="text-xs text-warm-white/40">Waiting for payment…</p>
+            </>
+          )}
+        </div>
+      </BottomSheet>
+    );
+  }
 
   return (
     <BottomSheet open={open} onClose={onClose} title="Complete Purchase">
