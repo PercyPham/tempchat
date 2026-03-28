@@ -59,9 +59,9 @@ function CopyRow({ label, value }: { label: string; value: string }) {
         onClick={handleCopy}
         className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-all active:scale-95"
         style={{
-          background: copied ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.06)",
-          color: copied ? "rgba(34,197,94,0.9)" : "rgba(255,255,255,0.4)",
-          border: copied ? "1px solid rgba(34,197,94,0.2)" : "1px solid rgba(255,255,255,0.06)",
+          background: copied ? "var(--tc-copy-done-bg)" : "var(--tc-copy-btn-bg)",
+          color: copied ? "rgba(245,158,11,0.9)" : "var(--tc-copy-btn-color)",
+          border: copied ? "1px solid var(--tc-copy-done-border)" : "1px solid var(--tc-copy-btn-border)",
         }}
       >
         {copied ? "Copied" : "Copy"}
@@ -180,7 +180,7 @@ export function PurchaseConfirmSheet({ open, option, onClose, onRedirect, makeTo
           {/* Bank info */}
           <div
             className="w-full max-w-70 rounded-2xl px-4 pt-1 pb-1"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+            style={{ background: "rgba(0,0,0,0.04)", border: "1px solid var(--tc-panel-border)" }}
           >
             {qrData.bankName && (
               <div className="py-2.5 border-b border-warm-white/6">
