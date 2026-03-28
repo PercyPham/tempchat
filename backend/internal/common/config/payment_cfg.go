@@ -19,6 +19,7 @@ type paymentConfig struct {
 	SepayWebhookAPIKey      string // SePay webhook auth key (Apikey header)
 	SepayAccountNumber      string // SePay bank account number (returned to frontend)
 	SepayBankCode           string // SePay bank code (returned to frontend)
+	SepayBankName           string // SePay bank display name (returned to frontend)
 	BoostPlusVND            int64
 	BoostProVND             int64
 	AppBaseURL              string // e.g. "https://app.tempchat.app"
@@ -34,6 +35,7 @@ func loadPaymentConfig() {
 		SepayWebhookAPIKey:      getEnv("SEPAY_WEBHOOK_API_KEY", ""),
 		SepayAccountNumber:      getEnv("SEPAY_ACCOUNT_NUMBER", ""),
 		SepayBankCode:           getEnv("SEPAY_BANK_CODE", ""),
+		SepayBankName:           getEnv("SEPAY_BANK_NAME", ""),
 		BoostPlusVND:            parseInt64Env("BOOST_PLUS_VND", 20000),
 		BoostProVND:             parseInt64Env("BOOST_PRO_VND", 50000),
 		AppBaseURL:              getEnv("APP_BASE_URL", "https://app.tempchat.app"),

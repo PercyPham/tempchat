@@ -40,4 +40,9 @@ export const hotelActions = {
     hotel.removeRoom(roomId);
     dispatchChange();
   },
+
+  updateExpiry(roomId: string, expiresAt: number): void {
+    hotel.updateExpiry(roomId, expiresAt);
+    dispatchChange();
+  },
 };

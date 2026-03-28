@@ -167,7 +167,7 @@ export async function getOrderStatus(orderId: string): Promise<OrderStatusRespon
 }
 
 export type InitiatePaymentResponse =
-  | { provider: "sepay"; orderId: string; amountVnd: number; accountNumber: string; bankCode: string }
+  | { provider: "sepay"; orderId: string; amountVnd: number; accountNumber: string; bankCode: string; bankName: string }
   | { provider: "polar"; orderId: string; checkoutUrl: string };
 
 export async function initiatePayment(

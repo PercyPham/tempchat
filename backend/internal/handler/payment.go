@@ -36,7 +36,8 @@ var sepayAllowedIPs = map[string]bool{
 	"103.255.238.139": true,
 }
 
-var orderIDPattern = regexp.MustCompile(`tc_[a-f0-9]+`)
+// orderIDPattern matches both "tc_<hex>" (canonical) and "tc<hex>" (underscore stripped by some banks).
+var orderIDPattern = regexp.MustCompile(`tc_?[a-f0-9]{8,}`)
 
 // --- InitiatePayment ---
 
@@ -121,6 +122,7 @@ func InitiatePayment(s store.Store) gin.HandlerFunc {
 				"amountVnd":     boostOpt.Pricing.VND,
 				"accountNumber": cfg.SepayAccountNumber,
 				"bankCode":      cfg.SepayBankCode,
+				"bankName":      cfg.SepayBankName,
 			})
 
 		case "polar":
@@ -162,12 +164,8 @@ func createPolarCheckout(productID, successURL, orderID string) (string, error) 
 		return "", err
 	}
 
-	fmt.Println(">>> polar url", baseURL+"/v1/checkouts")
-	fmt.Println(">>> polar body", string(body))
-
 	req, err := http.NewRequest(http.MethodPost, baseURL+"/v1/checkouts", bytes.NewReader(body))
 	if err != nil {
-		fmt.Println(">>> polar req err", err)
 		return "", err
 	}
 	req.Header.Set("Authorization", "Bearer "+cfg.PolarAccessToken)
@@ -175,14 +173,11 @@ func createPolarCheckout(productID, successURL, orderID string) (string, error) 
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Println(">>> polar do err", err)
 		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		fmt.Println(">>> polar error status", resp.StatusCode, string(respBody))
 		return "", fmt.Errorf("polar API returned %d", resp.StatusCode)
 	}
 
@@ -204,6 +199,19 @@ type sepayWebhookPayload struct {
 	Content        string  `json:"content"`
 	ReferenceCode  string  `json:"referenceCode"`
 	TransferType   string  `json:"transferType"`
+}
+
+// extractOrderID searches each field for the first tc_<hex> token and returns
+// it in canonical form (with underscore). Some banks strip underscores from
+// transfer content, so "tc56498f088b417b21" is normalized to "tc_56498f088b417b21".
+func extractOrderID(content string) string {
+	if m := orderIDPattern.FindString(content); m != "" {
+		if len(m) > 2 && m[2] != '_' {
+			return "tc_" + m[2:]
+		}
+		return m
+	}
+	return ""
 }
 
 // SepayWebhook handles POST /v1/payments/sepay/webhook.
@@ -235,13 +243,12 @@ func SepayWebhook(s store.Store, h *hub.Hub) gin.HandlerFunc {
 			return
 		}
 
-		// Extract orderId from the payment content field.
-		match := orderIDPattern.FindString(payload.Content)
-		if match == "" {
+		// Extract orderId from any field SePay may carry it in.
+		orderID := extractOrderID(payload.Content)
+		if orderID == "" {
 			c.Status(http.StatusOK) // unknown reference — don't retry
 			return
 		}
-		orderID := match
 
 		// Idempotency check.
 		idempKey := "payment:sepay:ref:" + payload.ReferenceCode
