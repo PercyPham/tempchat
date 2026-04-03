@@ -38,9 +38,25 @@
       "Bash(go run:*)",
       "Bash(xargs ls:*)",
       "Bash(find /Users/percypham/Projects/tempchat-mar -type f \\\\\\(-name *.js -o -name *.ts -o -name *.jsx -o -name *.tsx \\\\\\))",
-      "mcp__playwright__browser_take_screenshot"
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(ls:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/percypham/Projects/tempchat-spec/.claude/hooks/block-env-files.sh"
+          }
+        ]
+      }
     ]
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["playwright"]
+  "enabledMcpjsonServers": [
+    "playwright"
+  ]
 }
