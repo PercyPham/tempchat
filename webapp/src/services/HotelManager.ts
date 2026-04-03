@@ -36,9 +36,7 @@ export class HotelManager {
         continue;
       }
       if (data.expiresAt <= now) {
-        localStorage.removeItem(key);
-        void clearRoom(data.roomId);
-        clearLastSeenEid(data.roomId);
+        this.removeRoom(data.roomId);
         continue;
       }
       const session = await RoomService.restore(data);
