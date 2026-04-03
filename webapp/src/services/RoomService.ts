@@ -142,6 +142,10 @@ export class RoomService {
     };
   }
 
+  async decryptName(encrypted: string): Promise<string> {
+    return decrypt(encrypted, this.aesKey);
+  }
+
   async getEvents(afterEid?: number): Promise<RoomEvent[]> {
     const token = await this.makeToken(this.userId);
     return getEvents(this.roomId!, token, afterEid);

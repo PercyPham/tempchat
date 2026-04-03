@@ -7,6 +7,7 @@ import { useWebSocket, type WSEventData } from "../hooks/useWebSocket";
 import { decrypt, encrypt } from "../lib/crypto";
 import { buildDisplayNames } from "../lib/names";
 import { getLastSeenEid, setLastSeenEid } from "../lib/lastSeen";
+import { loadMessages, saveMessages, getMaxEid } from "../lib/messageStore";
 import { saveCoupon } from "../lib/payment";
 import { getOrderStatus } from "../lib/api";
 import { ChatHeader } from "../components/chat/ChatHeader";
@@ -89,7 +90,7 @@ export function ChatPage() {
     return () => clearInterval(interval);
   }, [searchParams, session, setSearchParams]);
 
-  // Load room info + initial events
+  // Load room info + initial events (local-first, then fetch only new from server)
   useEffect(() => {
     if (!session || !roomId) return;
 
@@ -98,8 +99,16 @@ export function ChatPage() {
 
     (async () => {
       try {
-        const [info, rawEvents] = await Promise.all([session.getRoom(), session.getEvents(joinEid)]);
+        const [localMessages, maxLocalEid, info] = await Promise.all([
+          loadMessages(roomId, joinEid),
+          getMaxEid(roomId),
+          session.getRoom(),
+        ]);
         setRoomInfo(info);
+
+        // Only fetch events not yet stored locally
+        const fetchFromEid = maxLocalEid >= joinEid ? maxLocalEid : joinEid;
+        const rawEvents = await session.getEvents(fetchFromEid);
 
         const decrypted = await Promise.all(
           rawEvents.map(async (ev): Promise<PlainMessage> => {
@@ -115,18 +124,27 @@ export function ChatPage() {
             };
           }),
         );
-        if (decrypted.length > 0) maxEidRef.current = Math.max(...decrypted.map((m) => m.eid));
 
-        const lastSeen = roomId ? getLastSeenEid(roomId) : 0;
-        const firstUnread = lastSeen > 0 ? decrypted.find((m) => m.eid > lastSeen) : undefined;
+        // Save newly fetched events to local store
+        if (decrypted.length > 0) void saveMessages(roomId, decrypted);
+
+        // Merge local + new, deduplicate by eid, sort
+        const existingEids = new Set(localMessages.map((m) => m.eid));
+        const newOnes = decrypted.filter((m) => !existingEids.has(m.eid));
+        const allMessages = [...localMessages, ...newOnes].sort((a, b) => a.eid - b.eid);
+
+        if (allMessages.length > 0) maxEidRef.current = Math.max(...allMessages.map((m) => m.eid));
+
+        const lastSeen = getLastSeenEid(roomId);
+        const firstUnread = lastSeen > 0 ? allMessages.find((m) => m.eid > lastSeen) : undefined;
         if (firstUnread) {
           const dividerEid = lastSeen + 0.1;
           const divider: PlainMessage = { eid: dividerEid, uid: null, ts: 0, systemType: "unread_divider" };
-          const withDivider = [...decrypted, divider].sort((a, b) => a.eid - b.eid);
+          const withDivider = [...allMessages, divider].sort((a, b) => a.eid - b.eid);
           setMessages(withDivider);
           setFirstUnreadEid(dividerEid);
         } else {
-          setMessages(decrypted);
+          setMessages(allMessages);
         }
       } catch {
         // If we can't load the room, go home
@@ -186,6 +204,7 @@ export function ChatPage() {
           for (const m of decryptedMissed) {
             if (m.eid > maxEidRef.current) maxEidRef.current = m.eid;
           }
+          void saveMessages(roomId!, decryptedMissed);
         } catch {
           // Best-effort; continue to process the current WS event
         }
@@ -235,6 +254,7 @@ export function ChatPage() {
         if (prev.some((m) => m.eid === eid)) return prev;
         return [...prev, msg];
       });
+      void saveMessages(roomId!, [msg]);
     },
     [session],
   );
@@ -273,6 +293,7 @@ export function ChatPage() {
         for (const m of decrypted) {
           if (m.eid > maxEidRef.current) maxEidRef.current = m.eid;
         }
+        void saveMessages(roomId!, decrypted);
       } catch {
         // Silently ignore — WS delivers future events anyway
       }

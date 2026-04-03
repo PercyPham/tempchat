@@ -21,9 +21,15 @@ export function DashboardPage() {
       if (names.has(room.roomId)) continue;
       const session = hotel.getSession(room.roomId);
       if (!session) continue;
-      session.getRoom()
-        .then((info) => setNames((prev) => new Map(prev).set(room.roomId, info.name)))
-        .catch(() => setNames((prev) => new Map(prev).set(room.roomId, room.roomId.slice(0, 8))));
+      if (room.encryptedName) {
+        session.decryptName(room.encryptedName)
+          .then((name) => setNames((prev) => new Map(prev).set(room.roomId, name)))
+          .catch(() => {/* leave as null */});
+      } else {
+        session.getRoom()
+          .then((info) => setNames((prev) => new Map(prev).set(room.roomId, info.name)))
+          .catch(() => {/* leave as null */});
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rooms]);
