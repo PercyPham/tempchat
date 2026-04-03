@@ -25,3 +25,13 @@ func FromGin(c *gin.Context) AppCtx {
 		Now:     time.Now(),
 	}
 }
+
+// ForEvent returns a new AppCtx derived from the receiver, with Now refreshed
+// to the current time. Use when processing individual events within a long-lived
+// connection (e.g. WebSocket) so each event gets an accurate timestamp.
+func (a AppCtx) ForEvent() AppCtx {
+	return AppCtx{
+		Context: a.Context,
+		Now:     time.Now(),
+	}
+}

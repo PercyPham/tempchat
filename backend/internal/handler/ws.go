@@ -88,7 +88,8 @@ func WsHandler(s store.Store, h *hub.Hub) gin.HandlerFunc {
 				continue
 			}
 
-			event, err := s.AppendMessage(ctx, roomID, userID, msg.M)
+			msgCtx := ctx.ForEvent()
+			event, err := s.AppendMessage(msgCtx, roomID, userID, msg.M)
 			if err != nil {
 				log.Printf("ws: AppendMessage error: %v", err)
 				continue
