@@ -45,4 +45,10 @@ export const hotelActions = {
     hotel.updateExpiry(roomId, expiresAt);
     dispatchChange();
   },
+
+  async verifyExpiredRoom(roomId: string): Promise<void> {
+    dispatchChange(); // optimistic: show 'checking' state (verifyExpiredRoom sets it on entry)
+    await hotel.verifyExpiredRoom(roomId);
+    dispatchChange(); // reflect final state (removed, restored, or unreachable)
+  },
 };

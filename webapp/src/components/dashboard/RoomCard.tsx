@@ -1,5 +1,6 @@
 import { useCountdown } from "../../hooks/useCountdown";
 import { CountdownBadge } from "../shared/CountdownBadge";
+import { hotelActions } from "../../context/HotelContext";
 import type { PersistedRoom } from "../../services/HotelManager";
 
 interface Props {
@@ -11,13 +12,18 @@ interface Props {
 }
 
 export function RoomCard({ room, name, index, hasNew, onClick }: Props) {
-  const countdown = useCountdown(room.expiresAt);
+  const countdown = useCountdown(room.expiresAt, () => {
+    void hotelActions.verifyExpiredRoom(room.roomId);
+  });
   const initial = name ? name.charAt(0).toUpperCase() : "·";
+  const isExpired = !!room.expiredState || countdown.expired;
+  const isChecking = room.expiredState === 'checking';
 
   return (
     <button
-      onClick={onClick}
-      className="group w-full text-left rounded-2xl overflow-hidden transition-all duration-200 hover:scale-[1.015] active:scale-[0.99]"
+      onClick={isExpired ? undefined : onClick}
+      disabled={isExpired}
+      className={`group w-full text-left rounded-2xl overflow-hidden transition-all duration-200 ${isExpired ? "opacity-50 cursor-not-allowed" : "hover:scale-[1.015] active:scale-[0.99]"}`}
       style={{
         animationDelay: `${index * 70}ms`,
         background: "linear-gradient(135deg, var(--tc-card-bg-from) 0%, var(--tc-card-bg-to) 100%)",
@@ -44,7 +50,10 @@ export function RoomCard({ room, name, index, hasNew, onClick }: Props) {
           <p className="font-display font-semibold text-warm-white truncate text-[15px] leading-tight mb-0.5">
             {name ?? <span className="text-warm-white/30">Loading…</span>}
           </p>
-          <CountdownBadge label={countdown.label} urgency={countdown.urgency} />
+          {isChecking
+            ? <span className="text-xs text-warm-white/40">Checking…</span>
+            : <CountdownBadge label={countdown.label} urgency={countdown.urgency} />
+          }
         </div>
 
         {/* New message indicator */}
