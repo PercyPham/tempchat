@@ -1,6 +1,35 @@
-# TempChat
+# TempChat ⚡
 
-A zero-knowledge, short-lived chat web application designed for immediate, real-world social interactions. It facilitates group communication without requiring phone numbers, app downloads, or permanent data footprints.
+**Zero-knowledge, ephemeral group chat for the moment.**
+
+TempChat is an open-source, short-lived chat application designed for immediate, real-world social interactions. It facilitates secure group communication without requiring phone numbers, app downloads, or permanent data footprints.
+
+- **Zero-Knowledge**: Messages are encrypted in your browser. We literally cannot read them.
+- **Ephemeral**: Rooms and messages vanish forever after a set time (e.g., 3 hours).
+- **No Friction**: No accounts, no sign-ups, no app store. Just a link or a QR code.
+
+---
+
+## 🔬 Zero-Knowledge Architecture
+
+TempChat follows a strict zero-knowledge security model. All cryptographic operations happen entirely in the browser via the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API).
+
+### 1. Key Generation (Browser)
+When a room is created, the browser generates an **ECDSA P-384** keypair locally.
+- **Private Key**: Embedded in the room's URL `#hash` (fragment). Since URL fragments are never sent to the server in HTTP requests, the private key never leaves your device.
+- **Public Key**: Sent to the server once (as a JWK) to allow verification of your messages.
+
+### 2. Encryption & Signing (Client-Side)
+Before any message or metadata (like display names) leaves your device:
+- **Key Derivation**: An **AES-256-GCM** encryption key is derived deterministically from the private key using **HKDF-SHA-384** (with a fixed salt and info).
+- **Encryption**: Plaintext is encrypted to ciphertext using the derived AES-GCM key.
+- **Authentication**: An ECDSA signature is generated for each request to verify the sender's identity without revealing their private key.
+
+### 3. The Blind Server
+The backend (Go/Gin) acts as a "blind" relay:
+- **Opaque Storage**: It only sees and stores scrambled ciphertext blobs in Redis.
+- **No Backdoors**: There is no master key and no way for the server to derive the encryption keys.
+- **Automatic Purge**: Every message and room metadata entry has a TTL. When it expires, it is permanently purged from memory with no backups or archives.
 
 ---
 
